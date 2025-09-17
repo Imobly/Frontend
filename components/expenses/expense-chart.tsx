@@ -23,29 +23,47 @@ interface ExpenseChartProps {
 }
 
 export function ExpenseChart({ expenses }: ExpenseChartProps) {
-  // Dados para gráfico de barras (por mês)
-  const monthlyData = expenses.reduce((acc, expense) => {
-    const month = new Date(expense.date).toLocaleDateString("pt-BR", { month: "short", year: "2-digit" })
-    const existing = acc.find((item) => item.month === month)
+  // Dados para gráfico de indicadores
+  const currentMonth = new Date().toLocaleDateString("pt-BR", { month: "long", year: "numeric" })
+  const lastMonth = new Date(new Date().setMonth(new Date().getMonth() - 1)).toLocaleDateString("pt-BR", { month: "long", year: "numeric" })
+  
+  // Calcula os indicadores atuais
+  const currentMonthExpenses = expenses.filter(expense => {
+    const expenseMonth = new Date(expense.date).toLocaleDateString("pt-BR", { month: "long", year: "numeric" })
+    return expenseMonth === currentMonth
+  })
+  
+  const lastMonthExpenses = expenses.filter(expense => {
+    const expenseMonth = new Date(expense.date).toLocaleDateString("pt-BR", { month: "long", year: "numeric" })
+    return expenseMonth === lastMonth
+  })
 
-    if (existing) {
-      if (expense.type === "expense") {
-        existing.despesas += expense.amount
-      } else {
-        existing.manutencoes += expense.amount
-      }
-      existing.total += expense.amount
-    } else {
-      acc.push({
-        month,
-        despesas: expense.type === "expense" ? expense.amount : 0,
-        manutencoes: expense.type === "maintenance" ? expense.amount : 0,
-        total: expense.amount,
-      })
+  const indicators = [
+    {
+      title: "Total Atual",
+      value: currentMonthExpenses.reduce((sum, expense) => sum + expense.amount, 0),
+      subtitle: currentMonth,
+      trend: "neutral" as const
+    },
+    {
+      title: "Despesas",
+      value: currentMonthExpenses.filter(e => e.type === "expense").reduce((sum, expense) => sum + expense.amount, 0),
+      subtitle: "Apenas despesas operacionais",
+      trend: "neutral" as const
+    },
+    {
+      title: "Manutenções", 
+      value: currentMonthExpenses.filter(e => e.type === "maintenance").reduce((sum, expense) => sum + expense.amount, 0),
+      subtitle: "Manutenções e reparos",
+      trend: "neutral" as const
+    },
+    {
+      title: "Comparação",
+      value: currentMonthExpenses.reduce((sum, expense) => sum + expense.amount, 0) - lastMonthExpenses.reduce((sum, expense) => sum + expense.amount, 0),
+      subtitle: `vs ${lastMonth}`,
+      trend: (currentMonthExpenses.reduce((sum, expense) => sum + expense.amount, 0) - lastMonthExpenses.reduce((sum, expense) => sum + expense.amount, 0)) > 0 ? "up" as const : "down" as const
     }
-
-    return acc
-  }, [] as any[])
+  ]
 
   // Dados para gráfico de pizza (por categoria)
   const categoryData = expenses.reduce((acc, expense) => {
@@ -67,58 +85,70 @@ export function ExpenseChart({ expenses }: ExpenseChartProps) {
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Despesas por Mês</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={monthlyData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="month" />
-              <YAxis />
-              <Tooltip
-                formatter={(value: number) => [`R$ ${value.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`, ""]}
-                labelFormatter={(label) => `Mês: ${label}`}
-              />
-              <Bar dataKey="despesas" stackId="a" fill="#0088FE" name="Despesas" />
-              <Bar dataKey="manutencoes" stackId="a" fill="#00C49F" name="Manutenções" />
-            </BarChart>
-          </ResponsiveContainer>
-        </CardContent>
-      </Card>
+      {/* Indicadores Principais */}
+      <div className="lg:col-span-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Indicadores de Despesas</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+              {indicators.map((indicator, index) => (
+                <div key={index} className="text-center p-4 bg-blue-50 rounded-lg border border-blue-100">
+                  <div className="text-2xl font-bold text-blue-600 mb-1">
+                    {indicator.value < 0 ? 
+                      `-R$ ${Math.abs(indicator.value).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` :
+                      `R$ ${indicator.value.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`
+                    }
+                  </div>
+                  <div className="text-sm font-medium text-blue-700 mb-1">{indicator.title}</div>
+                  <div className="text-xs text-blue-500">{indicator.subtitle}</div>
+                  {indicator.trend !== "neutral" && (
+                    <div className={`text-xs mt-1 ${indicator.trend === "up" ? "text-red-500" : "text-green-500"}`}>
+                      {indicator.trend === "up" ? "↑ Aumento" : "↓ Redução"}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Despesas por Categoria</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ResponsiveContainer width="100%" height={300}>
-            <PieChart>
-              <Pie
-                data={categoryData}
-                cx="50%"
-                cy="50%"
-                labelLine={false}
-                label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                outerRadius={80}
-                fill="#8884d8"
-                dataKey="value"
-              >
-                {categoryData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                ))}
-              </Pie>
-              <Tooltip
-                formatter={(value: number) => [
-                  `R$ ${value.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`,
-                  "Valor",
-                ]}
-              />
-            </PieChart>
-          </ResponsiveContainer>
-        </CardContent>
-      </Card>
+      {/* Despesas por Categoria */}
+      <div className="lg:col-span-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Despesas por Categoria</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={300}>
+              <PieChart>
+                <Pie
+                  data={categoryData}
+                  cx="50%"
+                  cy="50%"
+                  labelLine={false}
+                  label={({ name, percent }: any) => `${name} ${(percent * 100).toFixed(0)}%`}
+                  outerRadius={80}
+                  fill="#8884d8"
+                  dataKey="value"
+                >
+                  {categoryData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip
+                  formatter={(value: number) => [
+                    `R$ ${value.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`,
+                    "Valor",
+                  ]}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   )
 }

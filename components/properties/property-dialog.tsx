@@ -18,7 +18,18 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Upload, X } from "lucide-react"
+import { Upload, X, Plus, Edit, Building } from "lucide-react"
+
+interface Unit {
+  id: string
+  number: string
+  area: number
+  bedrooms: number
+  bathrooms: number
+  rent: number
+  status: 'vacant' | 'occupied' | 'maintenance'
+  tenant?: string
+}
 
 interface Property {
   id?: number
@@ -37,6 +48,8 @@ interface Property {
   status: string
   description: string
   images: string[]
+  units?: Unit[]
+  isResidential?: boolean
 }
 
 interface PropertyDialogProps {
@@ -62,11 +75,15 @@ const initialProperty: Property = {
   status: "vacant",
   description: "",
   images: [],
+  units: [],
+  isResidential: false,
 }
 
 export function PropertyDialog({ open, onOpenChange, property, onSave }: PropertyDialogProps) {
   const [formData, setFormData] = useState<Property>(initialProperty)
   const [isLoading, setIsLoading] = useState(false)
+  const [showUnitDialog, setShowUnitDialog] = useState(false)
+  const [editingUnit, setEditingUnit] = useState<Unit | null>(null)
 
   useEffect(() => {
     if (property) {
@@ -100,6 +117,21 @@ export function PropertyDialog({ open, onOpenChange, property, onSave }: Propert
     setFormData((prev) => ({ ...prev, images: prev.images.filter((_, i) => i !== index) }))
   }
 
+  const addOrUpdateUnit = (unit: Unit) => {
+    if (editingUnit) {
+      // Edit existing unit
+      const updatedUnits = formData.units?.map(u => u.id === unit.id ? unit : u) || []
+      handleInputChange('units', updatedUnits)
+    } else {
+      // Add new unit
+      const newUnit = { ...unit, id: Date.now().toString() }
+      const updatedUnits = [...(formData.units || []), newUnit]
+      handleInputChange('units', updatedUnits)
+    }
+    setShowUnitDialog(false)
+    setEditingUnit(null)
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
@@ -112,9 +144,12 @@ export function PropertyDialog({ open, onOpenChange, property, onSave }: Propert
 
         <form onSubmit={handleSubmit}>
           <Tabs defaultValue="basic" className="w-full">
-            <TabsList className="grid w-full grid-cols-3">
+            <TabsList className={`grid w-full ${formData.isResidential ? 'grid-cols-4' : 'grid-cols-3'}`}>
               <TabsTrigger value="basic">Informações Básicas</TabsTrigger>
               <TabsTrigger value="details">Detalhes</TabsTrigger>
+              {formData.isResidential && (
+                <TabsTrigger value="units">Unidades</TabsTrigger>
+              )}
               <TabsTrigger value="images">Fotos</TabsTrigger>
             </TabsList>
 
@@ -133,7 +168,10 @@ export function PropertyDialog({ open, onOpenChange, property, onSave }: Propert
 
                 <div className="space-y-2">
                   <Label htmlFor="type">Tipo</Label>
-                  <Select value={formData.type} onValueChange={(value) => handleInputChange("type", value)}>
+                  <Select value={formData.type} onValueChange={(value) => {
+                    handleInputChange("type", value)
+                    handleInputChange("isResidential", value === "residential")
+                  }}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -141,6 +179,7 @@ export function PropertyDialog({ open, onOpenChange, property, onSave }: Propert
                       <SelectItem value="apartment">Apartamento</SelectItem>
                       <SelectItem value="house">Casa</SelectItem>
                       <SelectItem value="commercial">Comercial</SelectItem>
+                      <SelectItem value="residential">Residencial</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -296,6 +335,85 @@ export function PropertyDialog({ open, onOpenChange, property, onSave }: Propert
               </div>
             </TabsContent>
 
+            {formData.isResidential && (
+              <TabsContent value="units" className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-medium">Unidades do Residencial</h3>
+                  <Button 
+                    type="button" 
+                    onClick={() => {
+                      setEditingUnit(null)
+                      setShowUnitDialog(true)
+                    }}
+                    size="sm"
+                  >
+                    <Plus className="mr-2 h-4 w-4" />
+                    Nova Unidade
+                  </Button>
+                </div>
+
+                <div className="grid gap-4">
+                  {formData.units?.map((unit) => (
+                    <Card key={unit.id} className="p-4">
+                      <div className="flex items-center justify-between">
+                        <div className="space-y-1">
+                          <div className="flex items-center space-x-4">
+                            <h4 className="font-medium">Unidade {unit.number}</h4>
+                            <span className={`px-2 py-1 text-xs rounded-full ${
+                              unit.status === 'occupied' ? 'bg-green-100 text-green-800' :
+                              unit.status === 'vacant' ? 'bg-gray-100 text-gray-800' :
+                              'bg-orange-100 text-orange-800'
+                            }`}>
+                              {unit.status === 'occupied' ? 'Ocupada' : 
+                               unit.status === 'vacant' ? 'Vaga' : 'Manutenção'}
+                            </span>
+                          </div>
+                          <div className="text-sm text-gray-600">
+                            {unit.area}m² • {unit.bedrooms} quartos • {unit.bathrooms} banheiros • R$ {unit.rent.toLocaleString('pt-BR')}
+                          </div>
+                          {unit.tenant && (
+                            <div className="text-sm text-blue-600">Inquilino: {unit.tenant}</div>
+                          )}
+                        </div>
+                        <div className="flex space-x-2">
+                          <Button 
+                            type="button" 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => {
+                              setEditingUnit(unit)
+                              setShowUnitDialog(true)
+                            }}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button 
+                            type="button" 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => {
+                              const updatedUnits = formData.units?.filter(u => u.id !== unit.id) || []
+                              handleInputChange('units', updatedUnits)
+                            }}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    </Card>
+                  ))}
+                  
+                  {(!formData.units || formData.units.length === 0) && (
+                    <div className="text-center py-8 text-gray-500">
+                      <Building className="mx-auto h-12 w-12 mb-4 opacity-50" />
+                      <p>Nenhuma unidade cadastrada</p>
+                      <p className="text-sm">Clique em "Nova Unidade" para começar</p>
+                    </div>
+                  )}
+                </div>
+              </TabsContent>
+            )}
+
             <TabsContent value="images" className="space-y-4">
               <Card>
                 <CardHeader>
@@ -346,6 +464,170 @@ export function PropertyDialog({ open, onOpenChange, property, onSave }: Propert
             </Button>
             <Button type="submit" disabled={isLoading}>
               {isLoading ? "Salvando..." : property ? "Salvar Alterações" : "Criar Imóvel"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+
+      {/* Unit Dialog */}
+      <UnitDialog 
+        open={showUnitDialog}
+        onOpenChange={setShowUnitDialog}
+        unit={editingUnit}
+        onSave={addOrUpdateUnit}
+      />
+    </Dialog>
+  )
+}
+
+// Unit Dialog Component
+interface UnitDialogProps {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  unit?: Unit | null
+  onSave: (unit: Unit) => void
+}
+
+function UnitDialog({ open, onOpenChange, unit, onSave }: UnitDialogProps) {
+  const [unitData, setUnitData] = useState<Unit>({
+    id: '',
+    number: '',
+    area: 0,
+    bedrooms: 0,
+    bathrooms: 0,
+    rent: 0,
+    status: 'vacant'
+  })
+
+  useEffect(() => {
+    if (unit) {
+      setUnitData(unit)
+    } else {
+      setUnitData({
+        id: '',
+        number: '',
+        area: 0,
+        bedrooms: 0,
+        bathrooms: 0,
+        rent: 0,
+        status: 'vacant'
+      })
+    }
+  }, [unit])
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    onSave(unitData)
+  }
+
+  const handleInputChange = (field: keyof Unit, value: any) => {
+    setUnitData(prev => ({ ...prev, [field]: value }))
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>{unit ? 'Editar Unidade' : 'Nova Unidade'}</DialogTitle>
+          <DialogDescription>
+            {unit ? 'Atualize as informações da unidade.' : 'Adicione uma nova unidade ao residencial.'}
+          </DialogDescription>
+        </DialogHeader>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="unit-number">Número da Unidade</Label>
+              <Input
+                id="unit-number"
+                value={unitData.number}
+                onChange={(e) => handleInputChange('number', e.target.value)}
+                placeholder="Ex: 101, 202, Casa A"
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="unit-area">Área (m²)</Label>
+              <Input
+                id="unit-area"
+                type="number"
+                value={unitData.area}
+                onChange={(e) => handleInputChange('area', Number(e.target.value))}
+                min="1"
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="unit-bedrooms">Quartos</Label>
+              <Input
+                id="unit-bedrooms"
+                type="number"
+                value={unitData.bedrooms}
+                onChange={(e) => handleInputChange('bedrooms', Number(e.target.value))}
+                min="0"
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="unit-bathrooms">Banheiros</Label>
+              <Input
+                id="unit-bathrooms"
+                type="number"
+                value={unitData.bathrooms}
+                onChange={(e) => handleInputChange('bathrooms', Number(e.target.value))}
+                min="0"
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="unit-rent">Valor do Aluguel (R$)</Label>
+              <Input
+                id="unit-rent"
+                type="number"
+                value={unitData.rent}
+                onChange={(e) => handleInputChange('rent', Number(e.target.value))}
+                min="0"
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="unit-status">Status</Label>
+              <Select value={unitData.status} onValueChange={(value) => handleInputChange('status', value)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="vacant">Vaga</SelectItem>
+                  <SelectItem value="occupied">Ocupada</SelectItem>
+                  <SelectItem value="maintenance">Manutenção</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {unitData.status === 'occupied' && (
+            <div className="space-y-2">
+              <Label htmlFor="unit-tenant">Inquilino</Label>
+              <Input
+                id="unit-tenant"
+                value={unitData.tenant || ''}
+                onChange={(e) => handleInputChange('tenant', e.target.value)}
+                placeholder="Nome do inquilino"
+              />
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              Cancelar
+            </Button>
+            <Button type="submit">
+              {unit ? 'Salvar Alterações' : 'Adicionar Unidade'}
             </Button>
           </DialogFooter>
         </form>

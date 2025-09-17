@@ -18,41 +18,16 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Calculator } from "lucide-react"
-
-interface Payment {
-  id?: number
-  property: {
-    id: number
-    name: string
-    address: string
-  } | null
-  tenant: {
-    id: number
-    name: string
-    email: string
-  } | null
-  contract: {
-    id: number
-    title: string
-  } | null
-  dueDate: string
-  paymentDate: string | null
-  amount: number
-  fineAmount: number
-  totalAmount: number
-  status: string
-  paymentMethod: string | null
-  description: string
-}
+import { Payment, PaymentFormData } from "@/lib/types/payment"
 
 interface PaymentDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   payment?: Payment | null
-  onSave: (payment: Payment) => void
+  onSave: (payment: PaymentFormData) => void
 }
 
-const initialPayment: Payment = {
+const initialPayment: PaymentFormData = {
   property: null,
   tenant: null,
   contract: null,
@@ -95,7 +70,7 @@ const FINE_SETTINGS = {
 }
 
 export function PaymentDialog({ open, onOpenChange, payment, onSave }: PaymentDialogProps) {
-  const [formData, setFormData] = useState<Payment>(initialPayment)
+  const [formData, setFormData] = useState<PaymentFormData>(initialPayment)
   const [isLoading, setIsLoading] = useState(false)
 
   useEffect(() => {

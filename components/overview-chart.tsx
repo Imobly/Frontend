@@ -52,8 +52,8 @@ export function OverviewChart() {
           labelStyle={{ color: "#000" }}
         />
         <Legend />
-        <Bar dataKey="receitas" name="Receitas" fill="hsl(var(--status-paid))" radius={[4, 4, 0, 0]} />
-        <Bar dataKey="despesas" name="Despesas" fill="hsl(var(--status-overdue))" radius={[4, 4, 0, 0]} />
+        <Bar dataKey="receitas" name="Receitas" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+        <Bar dataKey="despesas" name="Despesas" fill="#1e40af" radius={[4, 4, 0, 0]} />
       </BarChart>
     </ResponsiveContainer>
   )

@@ -10,6 +10,7 @@ import { PaymentList } from "@/components/payments/payment-list"
 import { PaymentDialog } from "@/components/payments/payment-dialog"
 import { PaymentFilters } from "@/components/payments/payment-filters"
 import { PaymentChart } from "@/components/payments/payment-chart"
+import { Payment, PaymentFormData } from "@/lib/types/payment"
 
 // Mock data - será substituído por dados reais posteriormente
 const mockPayments = [
@@ -148,10 +149,11 @@ const mockPayments = [
 export function PaymentsView() {
   const [payments] = useState(mockPayments)
   const [searchTerm, setSearchTerm] = useState("")
-  const [viewMode, setViewMode] = useState<"grid" | "list">("list")
+  const [viewMode, setViewMode] = useState<"grid" | "list" | "property">("list")
   const [showDialog, setShowDialog] = useState(false)
-  const [selectedPayment, setSelectedPayment] = useState<(typeof mockPayments)[0] | null>(null)
+  const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null)
   const [showFilters, setShowFilters] = useState(false)
+  const [selectedPropertyId, setSelectedPropertyId] = useState<number | null>(null)
 
   const filteredPayments = payments.filter(
     (payment) =>
@@ -161,7 +163,7 @@ export function PaymentsView() {
       payment.property.address.toLowerCase().includes(searchTerm.toLowerCase()),
   )
 
-  const handleEdit = (payment: (typeof mockPayments)[0]) => {
+  const handleEdit = (payment: Payment) => {
     setSelectedPayment(payment)
     setShowDialog(true)
   }
@@ -183,6 +185,37 @@ export function PaymentsView() {
     totalPending: payments.filter((p) => p.status === "pending").reduce((sum, p) => sum + p.totalAmount, 0),
     totalOverdue: payments.filter((p) => p.status === "overdue").reduce((sum, p) => sum + p.totalAmount, 0),
     totalFines: payments.reduce((sum, p) => sum + p.fineAmount, 0),
+  }
+
+  // Group payments by property
+  const paymentsByProperty = payments.reduce((acc, payment) => {
+    const propertyId = payment.property.id
+    if (!acc[propertyId]) {
+      acc[propertyId] = {
+        property: payment.property,
+        payments: []
+      }
+    }
+    acc[propertyId].payments.push(payment)
+    return acc
+  }, {} as Record<number, { property: typeof payments[0]['property'], payments: typeof payments }>)
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'paid': return 'text-green-600'
+      case 'pending': return 'text-yellow-600'
+      case 'overdue': return 'text-red-600'
+      default: return 'text-gray-600'
+    }
+  }
+
+  const getStatusBadgeColor = (status: string) => {
+    switch (status) {
+      case 'paid': return 'bg-green-100 text-green-800'
+      case 'pending': return 'bg-yellow-100 text-yellow-800'
+      case 'overdue': return 'bg-red-100 text-red-800'
+      default: return 'bg-gray-100 text-gray-800'
+    }
   }
 
   return (
@@ -258,6 +291,78 @@ export function PaymentsView() {
         </CardHeader>
         <CardContent>
           <PaymentChart />
+        </CardContent>
+      </Card>
+
+      {/* Property-based View */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Pagamentos por Propriedade</CardTitle>
+          <p className="text-sm text-gray-600">Visualize os pagamentos organizados por imóvel</p>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {Object.values(paymentsByProperty).map(({ property, payments: propertyPayments }) => (
+              <div key={property.id} className="border rounded-lg p-4">
+                <div 
+                  className="flex items-center justify-between cursor-pointer"
+                  onClick={() => setSelectedPropertyId(selectedPropertyId === property.id ? null : property.id)}
+                >
+                  <div>
+                    <h3 className="font-medium">{property.name}</h3>
+                    <p className="text-sm text-gray-600">{property.address}</p>
+                  </div>
+                  <div className="flex items-center space-x-4">
+                    <div className="text-sm">
+                      <span className="text-green-600 font-medium">
+                        {propertyPayments.filter(p => p.status === 'paid').length} pagos
+                      </span>
+                      <span className="mx-2">•</span>
+                      <span className="text-yellow-600 font-medium">
+                        {propertyPayments.filter(p => p.status === 'pending').length} pendentes
+                      </span>
+                      <span className="mx-2">•</span>
+                      <span className="text-red-600 font-medium">
+                        {propertyPayments.filter(p => p.status === 'overdue').length} atrasados
+                      </span>
+                    </div>
+                    <Button variant="ghost" size="sm">
+                      {selectedPropertyId === property.id ? '−' : '+'}
+                    </Button>
+                  </div>
+                </div>
+
+                {selectedPropertyId === property.id && (
+                  <div className="mt-4 space-y-3">
+                    {propertyPayments.map((payment) => (
+                      <div key={payment.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                        <div className="flex-1">
+                          <div className="flex items-center space-x-3">
+                            <div>
+                              <p className="font-medium">{payment.tenant.name}</p>
+                              <p className="text-sm text-gray-600">{payment.description}</p>
+                            </div>
+                            <span className={`px-2 py-1 text-xs rounded-full ${getStatusBadgeColor(payment.status)}`}>
+                              {payment.status === 'paid' ? 'Pago' : 
+                               payment.status === 'pending' ? 'Pendente' : 'Atrasado'}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className={`font-medium ${getStatusColor(payment.status)}`}>
+                            R$ {payment.totalAmount.toLocaleString('pt-BR')}
+                          </p>
+                          <p className="text-sm text-gray-600">
+                            Venc: {new Date(payment.dueDate).toLocaleDateString('pt-BR')}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
         </CardContent>
       </Card>
 

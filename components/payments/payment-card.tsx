@@ -5,28 +5,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Building2, User, Calendar, CreditCard, MoreHorizontal, Edit, Trash2, Eye, AlertTriangle } from "lucide-react"
-
-interface Payment {
-  id: number
-  property: {
-    id: number
-    name: string
-    address: string
-  }
-  tenant: {
-    id: number
-    name: string
-    email: string
-  }
-  dueDate: string
-  paymentDate: string | null
-  amount: number
-  fineAmount: number
-  totalAmount: number
-  status: string
-  paymentMethod: string | null
-  description: string
-}
+import { Payment } from "@/lib/types/payment"
 
 interface PaymentCardProps {
   payment: Payment

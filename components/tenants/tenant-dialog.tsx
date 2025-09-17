@@ -17,6 +17,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Upload, X } from "lucide-react"
 
 interface Tenant {
   id?: number
@@ -31,21 +32,23 @@ interface Tenant {
     phone: string
     relationship: string
   }
-  address: {
-    street: string
-    neighborhood: string
-    city: string
-    state: string
-    zipCode: string
-  }
-  property: {
-    id: number
-    name: string
-    address: string
+  contract: {
+    propertyId: number
+    propertyName: string
+    propertyAddress: string
+    startDate: string
+    endDate: string
+    rent: number
+    deposit: number
+    interestRate: number
+    fineRate: number
   } | null
-  contractStart: string | null
-  contractEnd: string | null
-  rent: number
+  documents: {
+    id: string
+    name: string
+    type: 'identity' | 'contract' | 'other'
+    url: string
+  }[]
   status: string
 }
 
@@ -68,17 +71,8 @@ const initialTenant: Tenant = {
     phone: "",
     relationship: "",
   },
-  address: {
-    street: "",
-    neighborhood: "",
-    city: "",
-    state: "",
-    zipCode: "",
-  },
-  property: null,
-  contractStart: null,
-  contractEnd: null,
-  rent: 0,
+  contract: null,
+  documents: [],
   status: "active",
 }
 
@@ -114,8 +108,8 @@ export function TenantDialog({ open, onOpenChange, tenant, onSave }: TenantDialo
   }
 
   const handleInputChange = (field: string, value: any) => {
-    if (field.includes(".")) {
-      const [parent, child] = field.split(".")
+    if (field.includes('.')) {
+      const [parent, child] = field.split('.')
       setFormData((prev) => ({
         ...prev,
         [parent]: {
@@ -129,8 +123,53 @@ export function TenantDialog({ open, onOpenChange, tenant, onSave }: TenantDialo
   }
 
   const handlePropertyChange = (propertyId: string) => {
-    const property = mockProperties.find((p) => p.id.toString() === propertyId)
-    setFormData((prev) => ({ ...prev, property: property || null }))
+    if (propertyId === "none") {
+      setFormData((prev) => ({ ...prev, contract: null }))
+    } else {
+      const property = mockProperties.find(p => p.id.toString() === propertyId)
+      if (property) {
+        setFormData((prev) => ({
+          ...prev,
+          contract: {
+            propertyId: property.id,
+            propertyName: property.name,
+            propertyAddress: property.address,
+            startDate: "",
+            endDate: "",
+            rent: 0,
+            deposit: 0,
+            interestRate: 0,
+            fineRate: 0,
+          }
+        }))
+      }
+    }
+  }
+
+  const addDocument = () => {
+    const newDoc = {
+      id: Date.now().toString(),
+      name: "Novo Documento",
+      type: 'other' as const,
+      url: "",
+    }
+    setFormData((prev) => ({ ...prev, documents: [...prev.documents, newDoc] }))
+  }
+
+  const removeDocument = (docId: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      documents: prev.documents.filter(doc => doc.id !== docId)
+    }))
+  }
+
+  const updateDocument = (docId: string, field: string, value: any) => {
+    setFormData((prev) => ({
+      ...prev,
+      documents: prev.documents.map(doc => 
+        doc.id === docId ? { ...doc, [field]: value } : doc
+      )
+    }))
   }
 
   return (
@@ -145,11 +184,10 @@ export function TenantDialog({ open, onOpenChange, tenant, onSave }: TenantDialo
 
         <form onSubmit={handleSubmit}>
           <Tabs defaultValue="personal" className="w-full">
-            <TabsList className="grid w-full grid-cols-4">
+            <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="personal">Dados Pessoais</TabsTrigger>
-              <TabsTrigger value="contact">Contato</TabsTrigger>
-              <TabsTrigger value="address">Endereço</TabsTrigger>
-              <TabsTrigger value="property">Imóvel</TabsTrigger>
+              <TabsTrigger value="contract">Contrato</TabsTrigger>
+              <TabsTrigger value="documents">Documentos</TabsTrigger>
             </TabsList>
 
             <TabsContent value="personal" className="space-y-4">
@@ -210,71 +248,76 @@ export function TenantDialog({ open, onOpenChange, tenant, onSave }: TenantDialo
                   </Select>
                 </div>
               </div>
-            </TabsContent>
 
-            <TabsContent value="contact" className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="email">E-mail</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={formData.email}
-                    onChange={(e) => handleInputChange("email", e.target.value)}
-                    placeholder="email@exemplo.com"
-                    required
-                  />
-                </div>
+              {/* Contatos Principais */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Informações de Contato</CardTitle>
+                  <CardDescription>Dados principais para comunicação</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="email">E-mail</Label>
+                      <Input
+                        id="email"
+                        type="email"
+                        value={formData.email}
+                        onChange={(e) => handleInputChange("email", e.target.value)}
+                        placeholder="email@exemplo.com"
+                        required
+                      />
+                    </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="phone">Telefone</Label>
-                  <Input
-                    id="phone"
-                    value={formData.phone}
-                    onChange={(e) => handleInputChange("phone", e.target.value)}
-                    placeholder="(11) 99999-9999"
-                    required
-                  />
-                </div>
-              </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="phone">Telefone</Label>
+                      <Input
+                        id="phone"
+                        value={formData.phone}
+                        onChange={(e) => handleInputChange("phone", e.target.value)}
+                        placeholder="(11) 99999-9999"
+                        required
+                      />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
 
+              {/* Contato de Emergência */}
               <Card>
                 <CardHeader>
                   <CardTitle className="text-lg">Contato de Emergência</CardTitle>
                   <CardDescription>Pessoa para contato em caso de emergência</CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid gap-4 md:grid-cols-2">
+                <CardContent>
+                  <div className="grid gap-4 md:grid-cols-3">
                     <div className="space-y-2">
-                      <Label htmlFor="emergencyName">Nome</Label>
+                      <Label htmlFor="emergency-name">Nome</Label>
                       <Input
-                        id="emergencyName"
+                        id="emergency-name"
                         value={formData.emergencyContact.name}
-                        onChange={(e) => handleInputChange("emergencyContact.name", e.target.value)}
+                        onChange={(e) => handleInputChange("emergencyContact", { ...formData.emergencyContact, name: e.target.value })}
                         placeholder="Nome do contato"
-                        required
                       />
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="emergencyPhone">Telefone</Label>
+                      <Label htmlFor="emergency-phone">Telefone</Label>
                       <Input
-                        id="emergencyPhone"
+                        id="emergency-phone"
                         value={formData.emergencyContact.phone}
-                        onChange={(e) => handleInputChange("emergencyContact.phone", e.target.value)}
+                        onChange={(e) => handleInputChange("emergencyContact", { ...formData.emergencyContact, phone: e.target.value })}
                         placeholder="(11) 99999-9999"
-                        required
                       />
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="emergencyRelationship">Parentesco</Label>
+                      <Label htmlFor="emergency-relationship">Parentesco</Label>
                       <Input
-                        id="emergencyRelationship"
+                        id="emergency-relationship"
                         value={formData.emergencyContact.relationship}
-                        onChange={(e) => handleInputChange("emergencyContact.relationship", e.target.value)}
-                        placeholder="Ex: Cônjuge, Pai, Mãe"
-                        required
+                        onChange={(e) => handleInputChange("emergencyContact", { ...formData.emergencyContact, relationship: e.target.value })}
+                        placeholder="Ex: Pai, Mãe, Irmão"
                       />
                     </div>
                   </div>
@@ -282,77 +325,17 @@ export function TenantDialog({ open, onOpenChange, tenant, onSave }: TenantDialo
               </Card>
             </TabsContent>
 
-            <TabsContent value="address" className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="street">Endereço</Label>
-                  <Input
-                    id="street"
-                    value={formData.address.street}
-                    onChange={(e) => handleInputChange("address.street", e.target.value)}
-                    placeholder="Rua, número, complemento"
-                    required
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="neighborhood">Bairro</Label>
-                  <Input
-                    id="neighborhood"
-                    value={formData.address.neighborhood}
-                    onChange={(e) => handleInputChange("address.neighborhood", e.target.value)}
-                    placeholder="Nome do bairro"
-                    required
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="city">Cidade</Label>
-                  <Input
-                    id="city"
-                    value={formData.address.city}
-                    onChange={(e) => handleInputChange("address.city", e.target.value)}
-                    placeholder="Nome da cidade"
-                    required
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="state">Estado</Label>
-                  <Input
-                    id="state"
-                    value={formData.address.state}
-                    onChange={(e) => handleInputChange("address.state", e.target.value)}
-                    placeholder="SP"
-                    maxLength={2}
-                    required
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="zipCode">CEP</Label>
-                  <Input
-                    id="zipCode"
-                    value={formData.address.zipCode}
-                    onChange={(e) => handleInputChange("address.zipCode", e.target.value)}
-                    placeholder="00000-000"
-                    required
-                  />
-                </div>
-              </div>
-            </TabsContent>
-
-            <TabsContent value="property" className="space-y-4">
+            <TabsContent value="contract" className="space-y-4">
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-lg">Vinculação de Imóvel</CardTitle>
-                  <CardDescription>Associe o inquilino a um imóvel e defina os termos do contrato</CardDescription>
+                  <CardTitle className="text-lg">Informações do Contrato</CardTitle>
+                  <CardDescription>Configure o contrato de locação do inquilino</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="grid gap-4 md:grid-cols-2">
                     <div className="space-y-2">
                       <Label htmlFor="property">Imóvel</Label>
-                      <Select value={formData.property?.id.toString() || "none"} onValueChange={handlePropertyChange}>
+                      <Select value={formData.contract?.propertyId.toString() || "none"} onValueChange={handlePropertyChange}>
                         <SelectTrigger>
                           <SelectValue placeholder="Selecione um imóvel" />
                         </SelectTrigger>
@@ -367,38 +350,146 @@ export function TenantDialog({ open, onOpenChange, tenant, onSave }: TenantDialo
                       </Select>
                     </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="rent">Valor do Aluguel (R$)</Label>
-                      <Input
-                        id="rent"
-                        type="number"
-                        value={formData.rent}
-                        onChange={(e) => handleInputChange("rent", Number(e.target.value))}
-                        placeholder="0"
-                        min="0"
-                        step="0.01"
-                      />
-                    </div>
+                    {formData.contract && (
+                      <>
+                        <div className="space-y-2">
+                          <Label htmlFor="rent">Valor do Aluguel (R$)</Label>
+                          <Input
+                            id="rent"
+                            type="number"
+                            value={formData.contract.rent}
+                            onChange={(e) => handleInputChange("contract", { ...formData.contract, rent: Number(e.target.value) })}
+                            placeholder="0"
+                            min="0"
+                            step="0.01"
+                          />
+                        </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="contractStart">Início do Contrato</Label>
-                      <Input
-                        id="contractStart"
-                        type="date"
-                        value={formData.contractStart || ""}
-                        onChange={(e) => handleInputChange("contractStart", e.target.value || null)}
-                      />
-                    </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="deposit">Caução (R$)</Label>
+                          <Input
+                            id="deposit"
+                            type="number"
+                            value={formData.contract.deposit}
+                            onChange={(e) => handleInputChange("contract", { ...formData.contract, deposit: Number(e.target.value) })}
+                            placeholder="0"
+                            min="0"
+                            step="0.01"
+                          />
+                        </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="contractEnd">Fim do Contrato</Label>
-                      <Input
-                        id="contractEnd"
-                        type="date"
-                        value={formData.contractEnd || ""}
-                        onChange={(e) => handleInputChange("contractEnd", e.target.value || null)}
-                      />
-                    </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="startDate">Data de Início</Label>
+                          <Input
+                            id="startDate"
+                            type="date"
+                            value={formData.contract.startDate}
+                            onChange={(e) => handleInputChange("contract", { ...formData.contract, startDate: e.target.value })}
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="endDate">Data de Término</Label>
+                          <Input
+                            id="endDate"
+                            type="date"
+                            value={formData.contract.endDate}
+                            onChange={(e) => handleInputChange("contract", { ...formData.contract, endDate: e.target.value })}
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="interestRate">Taxa de Juros (%)</Label>
+                          <Input
+                            id="interestRate"
+                            type="number"
+                            value={formData.contract.interestRate}
+                            onChange={(e) => handleInputChange("contract", { ...formData.contract, interestRate: Number(e.target.value) })}
+                            placeholder="0"
+                            min="0"
+                            step="0.01"
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="fineRate">Taxa de Multa (%)</Label>
+                          <Input
+                            id="fineRate"
+                            type="number"
+                            value={formData.contract.fineRate}
+                            onChange={(e) => handleInputChange("contract", { ...formData.contract, fineRate: Number(e.target.value) })}
+                            placeholder="0"
+                            min="0"
+                            step="0.01"
+                          />
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="documents" className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Documentos</CardTitle>
+                  <CardDescription>Anexe documentos pessoais e contratuais do inquilino</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <Button type="button" onClick={addDocument} variant="outline">
+                      <Upload className="mr-2 h-4 w-4" />
+                      Adicionar Documento
+                    </Button>
+
+                    {formData.documents.map((doc) => (
+                      <Card key={doc.id}>
+                        <CardContent className="pt-4">
+                          <div className="grid gap-4 md:grid-cols-4">
+                            <div className="space-y-2">
+                              <Label htmlFor={`doc-name-${doc.id}`}>Nome do Documento</Label>
+                              <Input
+                                id={`doc-name-${doc.id}`}
+                                value={doc.name}
+                                onChange={(e) => updateDocument(doc.id, "name", e.target.value)}
+                                placeholder="Nome do documento"
+                              />
+                            </div>
+
+                            <div className="space-y-2">
+                              <Label htmlFor={`doc-type-${doc.id}`}>Tipo</Label>
+                              <Select value={doc.type} onValueChange={(value) => updateDocument(doc.id, "type", value)}>
+                                <SelectTrigger>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="identity">Documento de Identidade</SelectItem>
+                                  <SelectItem value="contract">Contrato</SelectItem>
+                                  <SelectItem value="other">Outro</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+
+                            <div className="space-y-2">
+                              <Label htmlFor={`doc-url-${doc.id}`}>URL/Caminho</Label>
+                              <Input
+                                id={`doc-url-${doc.id}`}
+                                value={doc.url}
+                                onChange={(e) => updateDocument(doc.id, "url", e.target.value)}
+                                placeholder="URL ou caminho do arquivo"
+                              />
+                            </div>
+
+                            <div className="flex items-end">
+                              <Button type="button" variant="outline" size="sm" onClick={() => removeDocument(doc.id)}>
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
                   </div>
                 </CardContent>
               </Card>
@@ -410,7 +501,7 @@ export function TenantDialog({ open, onOpenChange, tenant, onSave }: TenantDialo
               Cancelar
             </Button>
             <Button type="submit" disabled={isLoading}>
-              {isLoading ? "Salvando..." : tenant ? "Salvar Alterações" : "Criar Inquilino"}
+              {isLoading ? "Salvando..." : "Salvar"}
             </Button>
           </DialogFooter>
         </form>

@@ -8,14 +8,12 @@ import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
-import { Home, Building2, Users, FileText, CreditCard, Receipt, Bell, Menu, Settings, Building } from "lucide-react"
+import { Home, Building2, Users, CreditCard, Receipt, Bell, Menu, Settings } from "lucide-react"
 
 const navigation = [
   { name: "Dashboard", href: "/", icon: Home },
-  { name: "Residenciais", href: "/residentials", icon: Building },
   { name: "Imóveis", href: "/properties", icon: Building2 },
   { name: "Inquilinos", href: "/tenants", icon: Users },
-  { name: "Contratos", href: "/contracts", icon: FileText },
   { name: "Pagamentos", href: "/payments", icon: CreditCard },
   { name: "Despesas", href: "/expenses", icon: Receipt },
   { name: "Notificações", href: "/notifications", icon: Bell },

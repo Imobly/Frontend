@@ -58,9 +58,9 @@ export function PaymentChart() {
           labelStyle={{ color: "#000" }}
         />
         <Legend />
-        <Bar dataKey="recebido" name="Recebido" fill="hsl(var(--status-paid))" radius={[4, 4, 0, 0]} />
-        <Bar dataKey="pendente" name="Pendente" fill="hsl(var(--status-pending))" radius={[4, 4, 0, 0]} />
-        <Bar dataKey="atrasado" name="Atrasado" fill="hsl(var(--status-overdue))" radius={[4, 4, 0, 0]} />
+        <Bar dataKey="recebido" name="Recebido" fill="#22c55e" radius={[4, 4, 0, 0]} />
+        <Bar dataKey="pendente" name="Pendente" fill="#eab308" radius={[4, 4, 0, 0]} />
+        <Bar dataKey="atrasado" name="Atrasado" fill="#ef4444" radius={[4, 4, 0, 0]} />
       </BarChart>
     </ResponsiveContainer>
   )

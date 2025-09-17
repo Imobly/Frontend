@@ -160,38 +160,50 @@ export function PropertiesView() {
       </div>
 
       {/* Stats */}
-      <div className="grid gap-4 md:grid-cols-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Total</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{statusCounts.total}</div>
-          </CardContent>
+      <div className="grid gap-3 md:grid-cols-4">
+        <Card className="p-4">
+          <div className="flex items-center space-x-2">
+            <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+              <div className="w-3 h-3 bg-blue-600 rounded-full"></div>
+            </div>
+            <div>
+              <p className="text-xs text-gray-600">Total</p>
+              <p className="text-lg font-bold">{statusCounts.total}</p>
+            </div>
+          </div>
         </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Ocupados</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">{statusCounts.occupied}</div>
-          </CardContent>
+        <Card className="p-4">
+          <div className="flex items-center space-x-2">
+            <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+              <div className="w-3 h-3 bg-green-600 rounded-full"></div>
+            </div>
+            <div>
+              <p className="text-xs text-gray-600">Ocupados</p>
+              <p className="text-lg font-bold text-green-600">{statusCounts.occupied}</p>
+            </div>
+          </div>
         </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Vagos</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-gray-600">{statusCounts.vacant}</div>
-          </CardContent>
+        <Card className="p-4">
+          <div className="flex items-center space-x-2">
+            <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
+              <div className="w-3 h-3 bg-gray-600 rounded-full"></div>
+            </div>
+            <div>
+              <p className="text-xs text-gray-600">Vagos</p>
+              <p className="text-lg font-bold text-gray-600">{statusCounts.vacant}</p>
+            </div>
+          </div>
         </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Manutenção</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-orange-600">{statusCounts.maintenance}</div>
-          </CardContent>
+        <Card className="p-4">
+          <div className="flex items-center space-x-2">
+            <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center">
+              <div className="w-3 h-3 bg-orange-600 rounded-full"></div>
+            </div>
+            <div>
+              <p className="text-xs text-gray-600">Manutenção</p>
+              <p className="text-lg font-bold text-orange-600">{statusCounts.maintenance}</p>
+            </div>
+          </div>
         </Card>
       </div>
 
