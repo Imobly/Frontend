@@ -5,27 +5,46 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Building2, Users, CreditCard, TrendingUp, AlertTriangle, Plus, Calendar } from "lucide-react"
+import { Building2, Users, CreditCard, TrendingUp, AlertTriangle, Plus, Calendar, RefreshCw } from "lucide-react"
 import { OverviewChart } from "@/components/overview-chart"
 import { RecentPayments } from "@/components/recent-payments"
 import { PropertyStatusGrid } from "@/components/property-status-grid"
-
-// Mock data - será substituído por dados reais posteriormente
-const mockData = {
-  totalProperties: 12,
-  occupiedProperties: 10,
-  totalTenants: 15,
-  activeTenants: 13,
-  totalContracts: 18,
-  activeContracts: 15,
-  monthlyRevenue: 45000,
-  pendingPayments: 3,
-  overduePayments: 1,
-  maintenanceRequests: 2,
-}
+import { useDashboard } from "@/lib/hooks/useDashboard"
 
 export function DashboardOverview() {
   const [selectedPeriod, setSelectedPeriod] = useState("6months")
+  const { summary, loading, error, refetch } = useDashboard()
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="space-y-8">
+        <div className="flex items-center justify-center h-64">
+          <RefreshCw className="h-8 w-8 animate-spin text-gray-400" />
+          <span className="ml-2 text-gray-600">Carregando dashboard...</span>
+        </div>
+      </div>
+    )
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="space-y-8">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+            <p className="text-red-600 mb-2">Erro ao carregar dashboard</p>
+            <p className="text-gray-600 text-sm mb-4">{error}</p>
+            <Button onClick={refetch} variant="outline">
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Tentar novamente
+            </Button>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-8">
@@ -64,9 +83,9 @@ export function DashboardOverview() {
             <Building2 className="h-4 w-4 text-gray-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{mockData.totalProperties}</div>
+            <div className="text-2xl font-bold">{summary?.properties.total || 0}</div>
             <p className="text-xs text-gray-600">
-              <span className="text-green-600">{mockData.occupiedProperties} ocupados</span>
+              <span className="text-green-600">{summary?.properties.occupied_units || 0} ocupados</span>
             </p>
           </CardContent>
         </Card>
@@ -77,8 +96,8 @@ export function DashboardOverview() {
             <Users className="h-4 w-4 text-gray-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{mockData.activeTenants}</div>
-            <p className="text-xs text-gray-600">de {mockData.totalTenants} total</p>
+            <div className="text-2xl font-bold">{summary?.contracts.active || 0}</div>
+            <p className="text-xs text-gray-600">contratos ativos</p>
           </CardContent>
         </Card>
 
@@ -88,10 +107,12 @@ export function DashboardOverview() {
             <CreditCard className="h-4 w-4 text-gray-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">R$ {mockData.monthlyRevenue.toLocaleString("pt-BR")}</div>
+            <div className="text-2xl font-bold">
+              R$ {(summary?.financial.monthly_revenue || 0).toLocaleString("pt-BR")}
+            </div>
             <p className="text-xs text-green-600 flex items-center">
               <TrendingUp className="mr-1 h-3 w-3" />
-              +12% vs mês anterior
+              Receita mensal
             </p>
           </CardContent>
         </Card>
@@ -103,12 +124,16 @@ export function DashboardOverview() {
           </CardHeader>
           <CardContent>
             <div className="flex items-center space-x-2">
-              <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100">
-                {mockData.pendingPayments} pendentes
+              <Badge className="bg-red-100 text-red-800 hover:bg-red-100">
+                {summary?.financial.overdue_payments || 0} em atraso
               </Badge>
-              <Badge className="bg-red-100 text-red-800 hover:bg-red-100">{mockData.overduePayments} atrasado</Badge>
+              <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100">
+                {summary?.contracts.expiring_soon || 0} vencendo
+              </Badge>
             </div>
-            <p className="text-xs text-gray-600 mt-2">{mockData.maintenanceRequests} solicitações de manutenção</p>
+            <p className="text-xs text-gray-600 mt-2">
+              Taxa de ocupação: {((summary?.properties.occupancy_rate || 0) * 100).toFixed(1)}%
+            </p>
           </CardContent>
         </Card>
       </div>

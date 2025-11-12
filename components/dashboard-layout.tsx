@@ -4,14 +4,18 @@ import type React from "react"
 
 import { useState } from "react"
 import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
-import { Home, Building2, Users, CreditCard, Receipt, Bell, Menu, Settings } from "lucide-react"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Home, Building2, Users, CreditCard, Receipt, Bell, Menu, Settings, LogOut, User } from "lucide-react"
+import { useAuth } from "@/lib/contexts/auth"
+import { UserSettingsDialog } from "@/components/auth/user-settings-dialog"
 
 const navigation = [
-  { name: "Dashboard", href: "/", icon: Home },
+  { name: "Dashboard", href: "/dashboard", icon: Home },
   { name: "Imóveis", href: "/properties", icon: Building2 },
   { name: "Inquilinos", href: "/tenants", icon: Users },
   { name: "Pagamentos", href: "/payments", icon: CreditCard },
@@ -25,7 +29,20 @@ interface DashboardLayoutProps {
 
 export function DashboardLayout({ children }: DashboardLayoutProps) {
   const pathname = usePathname()
+  const router = useRouter()
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const { user, logout } = useAuth()
+
+  const handleLogout = () => {
+    logout()
+    router.push('/login')
+  }
+
+  const getUserInitials = () => {
+    if (!user?.name) return 'U'
+    return user.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
+  }
 
   return (
     <div className="min-h-screen bg-white">
@@ -40,7 +57,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           <div className="flex h-full flex-col">
             <div className="flex h-16 items-center border-b px-6">
               <Building2 className="h-8 w-8 text-blue-600" />
-              <span className="ml-2 text-xl font-bold">PropManager</span>
+              <span className="ml-2 text-xl font-bold">Imobly</span>
             </div>
             <nav className="flex-1 space-y-1 px-3 py-4">
               {navigation.map((item) => {
@@ -61,6 +78,50 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                 )
               })}
             </nav>
+            
+            {/* Mobile user info */}
+            <div className="border-t p-4 space-y-2">
+              <div className="flex items-center gap-3 p-2">
+                <Avatar className="h-8 w-8">
+                  <AvatarImage src="/placeholder-user.jpg" alt={user?.name} />
+                  <AvatarFallback className="bg-blue-100 text-blue-600 text-sm">
+                    {getUserInitials()}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-gray-900 truncate">
+                    {user?.name || 'Usuário'}
+                  </p>
+                  <p className="text-xs text-gray-500 truncate">
+                    {user?.email}
+                  </p>
+                </div>
+              </div>
+              
+              <Button
+                variant="ghost"
+                className="w-full justify-start text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                onClick={() => {
+                  setSidebarOpen(false)
+                  setSettingsOpen(true)
+                }}
+              >
+                <User className="mr-3 h-5 w-5" />
+                Perfil
+              </Button>
+              
+              <Button
+                variant="ghost"
+                className="w-full justify-start text-red-600 hover:bg-red-100 hover:text-red-700"
+                onClick={() => {
+                  setSidebarOpen(false)
+                  handleLogout()
+                }}
+              >
+                <LogOut className="mr-3 h-5 w-5" />
+                Sair
+              </Button>
+            </div>
           </div>
         </SheetContent>
       </Sheet>
@@ -70,7 +131,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         <div className="flex min-h-0 flex-1 flex-col border-r bg-white">
           <div className="flex h-16 items-center border-b px-6">
             <Building2 className="h-8 w-8 text-blue-600" />
-            <span className="ml-2 text-xl font-bold">PropManager</span>
+            <span className="ml-2 text-xl font-bold">Imobly</span>
           </div>
           <nav className="flex-1 space-y-1 px-3 py-4">
             {navigation.map((item) => {
@@ -90,14 +151,52 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
               )
             })}
           </nav>
-          <div className="border-t p-4">
-            <Button
-              variant="ghost"
-              className="w-full justify-start text-gray-600 hover:bg-gray-100 hover:text-gray-900"
-            >
-              <Settings className="mr-3 h-5 w-5" />
-              Configurações
-            </Button>
+          <div className="border-t p-4 space-y-2">
+            {/* User info */}
+            <div className="flex items-center gap-3 p-2">
+              <Avatar className="h-8 w-8">
+                <AvatarImage src="/placeholder-user.jpg" alt={user?.name} />
+                <AvatarFallback className="bg-blue-100 text-blue-600 text-sm">
+                  {getUserInitials()}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-gray-900 truncate">
+                  {user?.name || 'Usuário'}
+                </p>
+                <p className="text-xs text-gray-500 truncate">
+                  {user?.email}
+                </p>
+              </div>
+            </div>
+            
+            {/* Menu dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  className="w-full justify-start text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                >
+                  <Settings className="mr-3 h-5 w-5" />
+                  Configurações
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-56">
+                <DropdownMenuItem onClick={() => setSettingsOpen(true)}>
+                  <User className="mr-2 h-4 w-4" />
+                  Perfil
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setSettingsOpen(true)}>
+                  <Settings className="mr-2 h-4 w-4" />
+                  Configurações
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleLogout} className="text-red-600">
+                  <LogOut className="mr-2 h-4 w-4" />
+                  Sair
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </div>
@@ -108,6 +207,12 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           <div className="p-4 md:p-8">{children}</div>
         </main>
       </div>
+
+      {/* User Settings Dialog */}
+      <UserSettingsDialog 
+        open={settingsOpen} 
+        onOpenChange={setSettingsOpen} 
+      />
     </div>
   )
 }

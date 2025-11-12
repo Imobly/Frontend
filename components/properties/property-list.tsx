@@ -5,21 +5,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { MoreHorizontal, Edit, Trash2, Eye, MapPin } from "lucide-react"
-
-interface Property {
-  id: number
-  name: string
-  address: string
-  neighborhood: string
-  type: string
-  area: number
-  bedrooms: number
-  bathrooms: number
-  parkingSpaces: number
-  rent: number
-  status: string
-  tenant?: string | null
-}
+import { Property } from "@/lib/types/property"
 
 interface PropertyListProps {
   properties: Property[]

@@ -1,8 +1,6 @@
 "use client"
 
-import type React from "react"
-
-import { useState, useEffect } from "react"
+import React, { useState, useEffect } from "react"
 import {
   Dialog,
   DialogContent,
@@ -17,50 +15,44 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Calculator } from "lucide-react"
-import { Payment, PaymentFormData } from "@/lib/types/payment"
+import { Calculator, AlertCircle } from "lucide-react"
+import { useProperties } from "@/lib/hooks/useProperties"
+import { useTenants } from "@/lib/hooks/useTenants"
+import { useContracts } from "@/lib/hooks/useContracts"
+import { PaymentCreate } from "@/lib/types/api"
+
+interface PaymentFormData {
+  property_id: number
+  tenant_id: number
+  contract_id: number
+  due_date: string
+  amount: number
+  fine_amount: number
+  total_amount: number
+  status: "pending" | "paid" | "overdue" | "partial"
+  payment_method?: "cash" | "transfer" | "pix" | "check" | "card"
+  description?: string
+}
 
 interface PaymentDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  payment?: Payment | null
+  payment?: any | null
   onSave: (payment: PaymentFormData) => void
 }
 
 const initialPayment: PaymentFormData = {
-  property: null,
-  tenant: null,
-  contract: null,
-  dueDate: "",
-  paymentDate: null,
+  property_id: 0,
+  tenant_id: 0,
+  contract_id: 0,
+  due_date: "",
   amount: 0,
-  fineAmount: 0,
-  totalAmount: 0,
+  fine_amount: 0,
+  total_amount: 0,
   status: "pending",
-  paymentMethod: null,
+  payment_method: undefined,
   description: "",
 }
-
-// Mock data for dropdowns
-const mockProperties = [
-  { id: 1, name: "Apartamento 101", address: "Rua das Flores, 123 - Centro" },
-  { id: 2, name: "Casa Jardins", address: "Av. Principal, 456 - Jardins" },
-  { id: 3, name: "Apartamento 205", address: "Rua Nova, 789 - Vila Nova" },
-  { id: 4, name: "Loja Centro", address: "Rua Comercial, 321 - Centro" },
-]
-
-const mockTenants = [
-  { id: 1, name: "Maria Silva", email: "maria.silva@email.com" },
-  { id: 2, name: "João Santos", email: "joao.santos@email.com" },
-  { id: 3, name: "Ana Costa", email: "ana.costa@email.com" },
-  { id: 4, name: "Carlos Lima", email: "carlos.lima@empresa.com" },
-]
-
-const mockContracts = [
-  { id: 1, title: "Contrato - Apartamento 101" },
-  { id: 2, title: "Contrato - Casa Jardins" },
-  { id: 3, title: "Contrato - Loja Centro" },
-]
 
 // Configurações de multa (seria configurável no sistema real)
 const FINE_SETTINGS = {
@@ -72,86 +64,142 @@ const FINE_SETTINGS = {
 export function PaymentDialog({ open, onOpenChange, payment, onSave }: PaymentDialogProps) {
   const [formData, setFormData] = useState<PaymentFormData>(initialPayment)
   const [isLoading, setIsLoading] = useState(false)
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
+  
+  const { properties } = useProperties()
+  const { tenants } = useTenants()
+  const { contracts } = useContracts()
 
   useEffect(() => {
     if (payment) {
-      setFormData(payment)
+      setFormData({
+        property_id: payment.property_id || 0,
+        tenant_id: payment.tenant_id || 0,
+        contract_id: payment.contract_id || 0,
+        due_date: payment.due_date || "",
+        amount: payment.amount || 0,
+        fine_amount: payment.fine_amount || 0,
+        total_amount: payment.total_amount || 0,
+        status: payment.status || "pending",
+        payment_method: payment.payment_method || "",
+        description: payment.description || "",
+      })
     } else {
       setFormData(initialPayment)
     }
   }, [payment])
 
-  // Calcular multa automaticamente
+  // Calcular multa e total automaticamente
   useEffect(() => {
-    if (formData.dueDate && formData.amount > 0) {
+    if (formData.amount > 0) {
       const today = new Date()
-      const dueDate = new Date(formData.dueDate)
-
-      if (formData.status === "overdue" && today > dueDate) {
+      const dueDate = new Date(formData.due_date)
+      
+      let fineAmount = 0
+      
+      // Se está em atraso ou marcado como overdue, calcular multa
+      if (formData.due_date && (formData.status === "overdue" || today > dueDate)) {
         const diffTime = today.getTime() - dueDate.getTime()
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+        const diffDays = Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)))
 
-        let fineAmount = 0
-        if (FINE_SETTINGS.type === "percentage") {
-          fineAmount = (formData.amount * FINE_SETTINGS.value) / 100
-        } else {
-          fineAmount = FINE_SETTINGS.value
+        if (diffDays > 0) {
+          if (FINE_SETTINGS.type === "percentage") {
+            fineAmount = (formData.amount * FINE_SETTINGS.value) / 100
+          } else {
+            fineAmount = FINE_SETTINGS.value
+          }
+
+          // Adicionar juros diários
+          const dailyInterest = (formData.amount * FINE_SETTINGS.dailyInterest * diffDays) / 100
+          fineAmount += dailyInterest
+          fineAmount = Math.round(fineAmount * 100) / 100
         }
-
-        // Adicionar juros diários
-        const dailyInterest = (formData.amount * FINE_SETTINGS.dailyInterest * diffDays) / 100
-        fineAmount += dailyInterest
-
-        setFormData((prev) => ({
-          ...prev,
-          fineAmount: Math.round(fineAmount * 100) / 100,
-          totalAmount: prev.amount + Math.round(fineAmount * 100) / 100,
-        }))
-      } else {
-        setFormData((prev) => ({
-          ...prev,
-          fineAmount: 0,
-          totalAmount: prev.amount,
-        }))
       }
+
+      const totalAmount = formData.amount + fineAmount
+
+      setFormData((prev) => ({
+        ...prev,
+        fine_amount: fineAmount,
+        total_amount: totalAmount,
+      }))
     }
-  }, [formData.dueDate, formData.amount, formData.status])
+  }, [formData.due_date, formData.amount, formData.status])
+
+  // Validação do formulário
+  const validateForm = (): boolean => {
+    const errors: Record<string, string> = {}
+
+    if (!formData.property_id || formData.property_id === 0) {
+      errors.property_id = "Selecione um imóvel"
+    }
+    if (!formData.tenant_id || formData.tenant_id === 0) {
+      errors.tenant_id = "Selecione um inquilino"
+    }
+    if (!formData.contract_id || formData.contract_id === 0) {
+      errors.contract_id = "Informe o ID do contrato"
+    }
+    if (!formData.due_date) {
+      errors.due_date = "Data de vencimento é obrigatória"
+    }
+    if (!formData.amount || formData.amount <= 0) {
+      errors.amount = "Valor deve ser maior que zero"
+    }
+    if (!formData.status) {
+      errors.status = "Status é obrigatório"
+    }
+    if (!formData.description || formData.description.trim() === "") {
+      errors.description = "Descrição é obrigatória"
+    }
+
+    setValidationErrors(errors)
+    return Object.keys(errors).length === 0
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    
+    if (!validateForm()) {
+      return
+    }
+
     setIsLoading(true)
 
     try {
-      await onSave(formData)
+      console.log("💾 Salvando pagamento:", formData)
+      const paymentData: PaymentCreate = {
+        property_id: formData.property_id,
+        tenant_id: formData.tenant_id,
+        contract_id: formData.contract_id,
+        due_date: formData.due_date,
+        amount: formData.amount,
+        fine_amount: formData.fine_amount,
+        total_amount: formData.total_amount,
+        status: formData.status,
+        payment_method: formData.payment_method,
+        description: formData.description || "",
+      }
+      
+      await onSave(paymentData)
+      
+      // Limpar validações em caso de sucesso
+      setValidationErrors({})
+    } catch (error) {
+      console.error("Erro ao salvar pagamento:", error)
     } finally {
       setIsLoading(false)
     }
   }
 
-  const handleInputChange = (field: keyof Payment, value: any) => {
+  const handleInputChange = (field: keyof PaymentFormData, value: any) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
   }
 
-  const handlePropertyChange = (propertyId: string) => {
-    const property = mockProperties.find((p) => p.id.toString() === propertyId)
-    setFormData((prev) => ({ ...prev, property: property || null }))
-  }
-
-  const handleTenantChange = (tenantId: string) => {
-    const tenant = mockTenants.find((t) => t.id.toString() === tenantId)
-    setFormData((prev) => ({ ...prev, tenant: tenant || null }))
-  }
-
-  const handleContractChange = (contractId: string) => {
-    const contract = mockContracts.find((c) => c.id.toString() === contractId)
-    setFormData((prev) => ({ ...prev, contract: contract || null }))
-  }
-
   const calculateFine = () => {
-    if (!formData.dueDate || formData.amount <= 0) return
+    if (!formData.due_date || formData.amount <= 0) return
 
     const today = new Date()
-    const dueDate = new Date(formData.dueDate)
+    const dueDate = new Date(formData.due_date)
 
     if (today > dueDate) {
       const diffTime = today.getTime() - dueDate.getTime()
@@ -169,8 +217,8 @@ export function PaymentDialog({ open, onOpenChange, payment, onSave }: PaymentDi
 
       setFormData((prev) => ({
         ...prev,
-        fineAmount: Math.round(fineAmount * 100) / 100,
-        totalAmount: prev.amount + Math.round(fineAmount * 100) / 100,
+        fine_amount: Math.round(fineAmount * 100) / 100,
+        total_amount: prev.amount + Math.round(fineAmount * 100) / 100,
         status: "overdue",
       }))
     }
@@ -190,120 +238,177 @@ export function PaymentDialog({ open, onOpenChange, payment, onSave }: PaymentDi
           {/* Associações */}
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="property">Imóvel</Label>
-              <Select value={formData.property?.id.toString() || ""} onValueChange={handlePropertyChange}>
-                <SelectTrigger>
+              <Label htmlFor="property_id">Imóvel *</Label>
+              <Select 
+                value={formData.property_id === 0 ? "" : formData.property_id.toString()} 
+                onValueChange={(value) => handleInputChange("property_id", parseInt(value) || 0)}
+              >
+                <SelectTrigger className={validationErrors.property_id ? "border-red-500" : ""}>
                   <SelectValue placeholder="Selecione um imóvel" />
                 </SelectTrigger>
                 <SelectContent>
-                  {mockProperties.map((property) => (
+                  {properties.map((property) => (
                     <SelectItem key={property.id} value={property.id.toString()}>
                       {property.name} - {property.address}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+              {validationErrors.property_id && (
+                <p className="text-sm text-red-500 flex items-center">
+                  <AlertCircle className="h-3 w-3 mr-1" />
+                  {validationErrors.property_id}
+                </p>
+              )}
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="tenant">Inquilino</Label>
-              <Select value={formData.tenant?.id.toString() || ""} onValueChange={handleTenantChange}>
-                <SelectTrigger>
+              <Label htmlFor="tenant_id">Inquilino *</Label>
+              <Select 
+                value={formData.tenant_id === 0 ? "" : formData.tenant_id.toString()} 
+                onValueChange={(value) => handleInputChange("tenant_id", parseInt(value) || 0)}
+              >
+                <SelectTrigger className={validationErrors.tenant_id ? "border-red-500" : ""}>
                   <SelectValue placeholder="Selecione um inquilino" />
                 </SelectTrigger>
                 <SelectContent>
-                  {mockTenants.map((tenant) => (
+                  {tenants.map((tenant) => (
                     <SelectItem key={tenant.id} value={tenant.id.toString()}>
                       {tenant.name} - {tenant.email}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+              {validationErrors.tenant_id && (
+                <p className="text-sm text-red-500 flex items-center">
+                  <AlertCircle className="h-3 w-3 mr-1" />
+                  {validationErrors.tenant_id}
+                </p>
+              )}
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="contract">Contrato</Label>
-              <Select value={formData.contract?.id.toString() || ""} onValueChange={handleContractChange}>
-                <SelectTrigger>
+              <Label htmlFor="contract_id">Contrato</Label>
+              <Select 
+                value={formData.contract_id === 0 ? "" : formData.contract_id.toString()} 
+                onValueChange={(value) => handleInputChange("contract_id", parseInt(value) || 0)}
+              >
+                <SelectTrigger className={validationErrors.contract_id ? "border-red-500" : ""}>
                   <SelectValue placeholder="Selecione um contrato" />
                 </SelectTrigger>
                 <SelectContent>
-                  {mockContracts.map((contract) => (
+                  {contracts
+                    .filter(contract => 
+                      (formData.property_id === 0 || contract.property_id === formData.property_id) &&
+                      (formData.tenant_id === 0 || contract.tenant_id === formData.tenant_id) &&
+                      contract.status === "active"
+                    )
+                    .map((contract) => (
                     <SelectItem key={contract.id} value={contract.id.toString()}>
-                      {contract.title}
+                      #{contract.id} - {contract.title}
                     </SelectItem>
                   ))}
+                  {contracts.filter(contract => 
+                    (formData.property_id === 0 || contract.property_id === formData.property_id) &&
+                    (formData.tenant_id === 0 || contract.tenant_id === formData.tenant_id) &&
+                    contract.status === "active"
+                  ).length === 0 && (
+                    <SelectItem value="no-contracts" disabled>
+                      Nenhum contrato disponível
+                    </SelectItem>
+                  )}
                 </SelectContent>
               </Select>
+              {validationErrors.contract_id && (
+                <p className="text-sm text-red-500 flex items-center">
+                  <AlertCircle className="h-3 w-3 mr-1" />
+                  {validationErrors.contract_id}
+                </p>
+              )}
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="status">Status</Label>
-              <Select value={formData.status} onValueChange={(value) => handleInputChange("status", value)}>
-                <SelectTrigger>
+              <Label htmlFor="status">Status *</Label>
+              <Select 
+                value={formData.status} 
+                onValueChange={(value) => handleInputChange("status", value)}
+              >
+                <SelectTrigger className={validationErrors.status ? "border-red-500" : ""}>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="pending">Pendente</SelectItem>
                   <SelectItem value="paid">Pago</SelectItem>
                   <SelectItem value="overdue">Atrasado</SelectItem>
+                  <SelectItem value="partial">Pagamento Parcial</SelectItem>
                 </SelectContent>
               </Select>
+              {validationErrors.status && (
+                <p className="text-sm text-red-500 flex items-center">
+                  <AlertCircle className="h-3 w-3 mr-1" />
+                  {validationErrors.status}
+                </p>
+              )}
             </div>
           </div>
 
           {/* Datas e Valores */}
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="dueDate">Data de Vencimento</Label>
+              <Label htmlFor="due_date">Data de Vencimento *</Label>
               <Input
-                id="dueDate"
+                id="due_date"
                 type="date"
-                value={formData.dueDate}
-                onChange={(e) => handleInputChange("dueDate", e.target.value)}
+                value={formData.due_date}
+                onChange={(e) => handleInputChange("due_date", e.target.value)}
+                className={validationErrors.due_date ? "border-red-500" : ""}
                 required
               />
+              {validationErrors.due_date && (
+                <p className="text-sm text-red-500 flex items-center">
+                  <AlertCircle className="h-3 w-3 mr-1" />
+                  {validationErrors.due_date}
+                </p>
+              )}
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="paymentDate">Data de Pagamento</Label>
-              <Input
-                id="paymentDate"
-                type="date"
-                value={formData.paymentDate || ""}
-                onChange={(e) => handleInputChange("paymentDate", e.target.value || null)}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="amount">Valor (R$)</Label>
+              <Label htmlFor="amount">Valor (R$) *</Label>
               <Input
                 id="amount"
                 type="number"
                 value={formData.amount}
                 onChange={(e) => handleInputChange("amount", Number(e.target.value))}
-                placeholder="0"
+                placeholder="0.00"
                 min="0"
                 step="0.01"
+                className={validationErrors.amount ? "border-red-500" : ""}
                 required
               />
+              {validationErrors.amount && (
+                <p className="text-sm text-red-500 flex items-center">
+                  <AlertCircle className="h-3 w-3 mr-1" />
+                  {validationErrors.amount}
+                </p>
+              )}
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="paymentMethod">Forma de Pagamento</Label>
+              <Label htmlFor="payment_method">Forma de Pagamento</Label>
               <Select
-                value={formData.paymentMethod || ""}
-                onValueChange={(value) => handleInputChange("paymentMethod", value || null)}
+                value={formData.payment_method || "none"}
+                onValueChange={(value) => handleInputChange("payment_method", value === "none" ? undefined : value as any)}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Selecione a forma" />
+                  <SelectValue placeholder="Selecione a forma (opcional)" />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="none">Não especificado</SelectItem>
                   <SelectItem value="pix">PIX</SelectItem>
-                  <SelectItem value="bank_transfer">Transferência Bancária</SelectItem>
+                  <SelectItem value="transfer">Transferência Bancária</SelectItem>
                   <SelectItem value="cash">Dinheiro</SelectItem>
                   <SelectItem value="check">Cheque</SelectItem>
-                  <SelectItem value="credit_card">Cartão de Crédito</SelectItem>
+                  <SelectItem value="card">Cartão</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -330,13 +435,13 @@ export function PaymentDialog({ open, onOpenChange, payment, onSave }: PaymentDi
                 <div className="space-y-2">
                   <Label>Multa</Label>
                   <div className="text-lg font-semibold text-red-600">
-                    R$ {formData.fineAmount.toLocaleString("pt-BR")}
+                    R$ {(formData.fine_amount || 0).toLocaleString("pt-BR")}
                   </div>
                 </div>
 
                 <div className="space-y-2">
                   <Label>Total</Label>
-                  <div className="text-xl font-bold">R$ {formData.totalAmount.toLocaleString("pt-BR")}</div>
+                  <div className="text-xl font-bold">R$ {formData.total_amount.toLocaleString("pt-BR")}</div>
                 </div>
               </div>
 
@@ -349,15 +454,22 @@ export function PaymentDialog({ open, onOpenChange, payment, onSave }: PaymentDi
 
           {/* Descrição */}
           <div className="space-y-2">
-            <Label htmlFor="description">Descrição</Label>
+            <Label htmlFor="description">Descrição *</Label>
             <Textarea
               id="description"
               value={formData.description}
               onChange={(e) => handleInputChange("description", e.target.value)}
               placeholder="Ex: Aluguel referente a dezembro/2024"
               rows={3}
+              className={validationErrors.description ? "border-red-500" : ""}
               required
             />
+            {validationErrors.description && (
+              <p className="text-sm text-red-500 flex items-center">
+                <AlertCircle className="h-3 w-3 mr-1" />
+                {validationErrors.description}
+              </p>
+            )}
           </div>
 
           <DialogFooter>

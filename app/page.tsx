@@ -1,10 +1,31 @@
-import { DashboardLayout } from "@/components/dashboard-layout"
-import { DashboardOverview } from "@/components/dashboard-overview"
+'use client';
+
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '../lib/contexts/auth';
 
 export default function HomePage() {
-  return (
-    <DashboardLayout>
-      <DashboardOverview />
-    </DashboardLayout>
-  )
+  const { isAuthenticated, isLoading } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!isLoading) {
+      if (isAuthenticated) {
+        router.push('/dashboard');
+      } else {
+        router.push('/login');
+      }
+    }
+  }, [isAuthenticated, isLoading, router]);
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
+  return null;
 }

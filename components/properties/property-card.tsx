@@ -6,23 +6,7 @@ import { Button } from "@/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { MapPin, Bed, Bath, Car, MoreHorizontal, Edit, Trash2, Eye } from "lucide-react"
 import Image from "next/image"
-
-interface Property {
-  id: number
-  name: string
-  address: string
-  neighborhood: string
-  type: string
-  area: number
-  bedrooms: number
-  bathrooms: number
-  parkingSpaces: number
-  rent: number
-  status: string
-  description: string
-  images: string[]
-  tenant?: string | null
-}
+import { Property } from "@/lib/types/property"
 
 interface PropertyCardProps {
   property: Property
@@ -45,7 +29,7 @@ export function PropertyCard({ property, onEdit }: PropertyCardProps) {
   return (
     <Card className="overflow-hidden hover:shadow-lg transition-shadow">
       <div className="relative h-48">
-        <Image src={property.images[0] || "/placeholder.svg"} alt={property.name} fill className="object-cover" />
+        <Image src={property.images?.[0] || "/placeholder.svg"} alt={property.name} fill className="object-cover" />
         <div className="absolute top-2 right-2">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

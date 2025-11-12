@@ -6,6 +6,9 @@ import { Button } from "@/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Building2, User, Calendar, CreditCard, MoreHorizontal, Edit, Trash2, Eye, AlertTriangle } from "lucide-react"
 import { Payment } from "@/lib/types/payment"
+import { useProperties } from "@/lib/hooks/useProperties"
+import { useTenants } from "@/lib/hooks/useTenants"
+import { useMemo } from "react"
 
 interface PaymentCardProps {
   payment: Payment
@@ -27,6 +30,20 @@ const paymentMethodConfig = {
 }
 
 export function PaymentCard({ payment, onEdit }: PaymentCardProps) {
+  const { properties } = useProperties()
+  const { tenants } = useTenants()
+
+  // Buscar dados da propriedade e inquilino pelos IDs
+  const property = useMemo(() => {
+    if (payment.property) return payment.property
+    return properties.find(p => p.id === payment.property_id)
+  }, [payment.property, payment.property_id, properties])
+
+  const tenant = useMemo(() => {
+    if (payment.tenant) return payment.tenant
+    return tenants.find(t => t.id === payment.tenant_id)
+  }, [payment.tenant, payment.tenant_id, tenants])
+
   const getDaysOverdue = () => {
     if (payment.status !== "overdue") return 0
     const today = new Date()
@@ -84,16 +101,16 @@ export function PaymentCard({ payment, onEdit }: PaymentCardProps) {
         <div className="flex items-center text-sm">
           <Building2 className="mr-2 h-3 w-3 text-muted-foreground" />
           <div>
-            <div className="font-medium">{payment.property.name}</div>
-            <div className="text-xs text-muted-foreground">{payment.property.address}</div>
+            <div className="font-medium">{property?.name || `Propriedade #${payment.property_id}`}</div>
+            <div className="text-xs text-muted-foreground">{property?.address || "Endereço não disponível"}</div>
           </div>
         </div>
 
         <div className="flex items-center text-sm">
           <User className="mr-2 h-3 w-3 text-muted-foreground" />
           <div>
-            <div className="font-medium">{payment.tenant.name}</div>
-            <div className="text-xs text-muted-foreground">{payment.tenant.email}</div>
+            <div className="font-medium">{tenant?.name || `Inquilino #${payment.tenant_id}`}</div>
+            <div className="text-xs text-muted-foreground">{tenant?.email || "Email não disponível"}</div>
           </div>
         </div>
 

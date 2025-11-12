@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { MoreHorizontal, Edit, Trash2, Eye, Building2, User, AlertTriangle } from "lucide-react"
 import { Payment } from "@/lib/types/payment"
+import { useProperties } from "@/lib/hooks/useProperties"
+import { useTenants } from "@/lib/hooks/useTenants"
 
 interface PaymentListProps {
   payments: Payment[]
@@ -16,23 +18,35 @@ const statusConfig = {
   paid: { label: "Pago", className: "bg-green-100 text-green-800" },
   pending: { label: "Pendente", className: "bg-yellow-100 text-yellow-800" },
   overdue: { label: "Atrasado", className: "bg-red-100 text-red-800" },
-}
-
-const paymentMethodConfig = {
-  pix: "PIX",
-  bank_transfer: "Transferência",
-  cash: "Dinheiro",
-  check: "Cheque",
-  credit_card: "Cartão de Crédito",
+  partial: { label: "Parcial", className: "bg-blue-100 text-blue-800" },
 }
 
 export function PaymentList({ payments, onEdit }: PaymentListProps) {
-  const getDaysOverdue = (payment: Payment) => {
-    if (payment.status !== "overdue") return 0
+  const { properties } = useProperties()
+  const { tenants } = useTenants()
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat("pt-BR", {
+      style: "currency",
+      currency: "BRL",
+    }).format(amount)
+  }
+
+  const getDaysOverdue = (dueDate: string) => {
     const today = new Date()
-    const dueDate = new Date(payment.dueDate)
-    const diffTime = today.getTime() - dueDate.getTime()
+    const due = new Date(dueDate)
+    const diffTime = today.getTime() - due.getTime()
     return Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+  }
+
+  const getProperty = (payment: Payment) => {
+    if (payment.property) return payment.property
+    return properties.find(p => p.id === payment.property_id)
+  }
+
+  const getTenant = (payment: Payment) => {
+    if (payment.tenant) return payment.tenant
+    return tenants.find(t => t.id === payment.tenant_id)
   }
 
   return (
@@ -52,102 +66,96 @@ export function PaymentList({ payments, onEdit }: PaymentListProps) {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {payments.map((payment) => (
-            <TableRow key={payment.id}>
-              <TableCell>
-                <div className="space-y-2">
-                  <div className="flex items-center space-x-2">
-                    <Building2 className="h-4 w-4 text-muted-foreground" />
-                    <div>
-                      <div className="font-medium text-sm">{payment.property.name}</div>
-                      <div className="text-xs text-muted-foreground">{payment.property.address}</div>
+          {payments.map((payment) => {
+            const property = getProperty(payment)
+            const tenant = getTenant(payment)
+            
+            return (
+              <TableRow key={payment.id}>
+                <TableCell>
+                  <div className="space-y-2">
+                    <div className="flex items-center space-x-2">
+                      <Building2 className="h-4 w-4 text-muted-foreground" />
+                      <div>
+                        <div className="font-medium text-sm">{property?.name || `Propriedade #${payment.property_id}`}</div>
+                        <div className="text-xs text-muted-foreground">{property?.address || "Endereço não disponível"}</div>
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <User className="h-4 w-4 text-muted-foreground" />
+                      <div>
+                        <div className="font-medium text-sm">{tenant?.name || `Inquilino #${payment.tenant_id}`}</div>
+                        <div className="text-xs text-muted-foreground">{tenant?.email || "Email não disponível"}</div>
+                      </div>
                     </div>
                   </div>
-                  <div className="flex items-center space-x-2">
-                    <User className="h-4 w-4 text-muted-foreground" />
-                    <div>
-                      <div className="font-medium text-sm">{payment.tenant.name}</div>
-                      <div className="text-xs text-muted-foreground">{payment.tenant.email}</div>
-                    </div>
-                  </div>
-                </div>
-              </TableCell>
-              <TableCell>
-                <div className="text-sm">{payment.description}</div>
-              </TableCell>
-              <TableCell>
-                <div className="text-sm">{new Date(payment.dueDate).toLocaleDateString("pt-BR")}</div>
-              </TableCell>
-              <TableCell>
-                <div className="text-sm">
-                  {payment.paymentDate ? (
-                    <div>
-                      <div>{new Date(payment.paymentDate).toLocaleDateString("pt-BR")}</div>
-                      {payment.paymentMethod && (
-                        <div className="text-xs text-muted-foreground">
-                          {paymentMethodConfig[payment.paymentMethod as keyof typeof paymentMethodConfig]}
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <span className="text-muted-foreground">-</span>
-                  )}
-                </div>
-              </TableCell>
-              <TableCell>
-                <span className="font-medium">R$ {payment.amount.toLocaleString("pt-BR")}</span>
-              </TableCell>
-              <TableCell>
-                {payment.fineAmount > 0 ? (
-                  <span className="font-medium text-red-600">R$ {payment.fineAmount.toLocaleString("pt-BR")}</span>
-                ) : (
-                  <span className="text-muted-foreground">-</span>
-                )}
-              </TableCell>
-              <TableCell>
-                <span className="font-bold">R$ {payment.totalAmount.toLocaleString("pt-BR")}</span>
-              </TableCell>
-              <TableCell>
-                <div className="flex flex-col space-y-1">
-                  <Badge
-                    variant="secondary"
-                    className={statusConfig[payment.status as keyof typeof statusConfig].className}
-                  >
-                    {statusConfig[payment.status as keyof typeof statusConfig].label}
-                  </Badge>
+                </TableCell>
+                <TableCell>
+                  <div className="text-sm">{payment.description}</div>
+                </TableCell>
+                <TableCell>
+                  <div className="text-sm">{new Date(payment.dueDate).toLocaleDateString("pt-BR")}</div>
                   {payment.status === "overdue" && (
-                    <Badge variant="secondary" className="bg-red-100 text-red-800 text-xs flex items-center">
-                      <AlertTriangle className="mr-1 h-2 w-2" />
-                      {getDaysOverdue(payment)} dias
-                    </Badge>
+                    <div className="text-xs text-red-600 flex items-center mt-1">
+                      <AlertTriangle className="h-3 w-3 mr-1" />
+                      {getDaysOverdue(payment.dueDate)} dias em atraso
+                    </div>
                   )}
-                </div>
-              </TableCell>
-              <TableCell>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                      <MoreHorizontal className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => onEdit(payment)}>
-                      <Edit className="mr-2 h-4 w-4" />
-                      Editar
-                    </DropdownMenuItem>
-                    <DropdownMenuItem>
-                      <Eye className="mr-2 h-4 w-4" />
-                      Visualizar
-                    </DropdownMenuItem>
-                    <DropdownMenuItem className="text-red-600">
-                      <Trash2 className="mr-2 h-4 w-4" />
-                      Excluir
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </TableCell>
-            </TableRow>
-          ))}
+                </TableCell>
+                <TableCell>
+                  {payment.paymentDate ? (
+                    <div className="text-sm">{new Date(payment.paymentDate).toLocaleDateString("pt-BR")}</div>
+                  ) : (
+                    <div className="text-xs text-muted-foreground">Não pago</div>
+                  )}
+                </TableCell>
+                <TableCell>
+                  <div className="text-sm font-medium">{formatCurrency(payment.amount)}</div>
+                </TableCell>
+                <TableCell>
+                  {payment.fineAmount > 0 ? (
+                    <div className="text-sm text-red-600">{formatCurrency(payment.fineAmount)}</div>
+                  ) : (
+                    <div className="text-xs text-muted-foreground">-</div>
+                  )}
+                </TableCell>
+                <TableCell>
+                  <div className="text-sm font-semibold">{formatCurrency(payment.totalAmount)}</div>
+                </TableCell>
+                <TableCell>
+                  <Badge 
+                    className={statusConfig[payment.status as keyof typeof statusConfig]?.className}
+                  >
+                    {statusConfig[payment.status as keyof typeof statusConfig]?.label || payment.status}
+                  </Badge>
+                </TableCell>
+                <TableCell>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" className="h-8 w-8 p-0">
+                        <span className="sr-only">Abrir menu</span>
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => onEdit(payment)}>
+                        <Edit className="mr-2 h-4 w-4" />
+                        Editar
+                      </DropdownMenuItem>
+                      <DropdownMenuItem>
+                        <Eye className="mr-2 h-4 w-4" />
+                        Visualizar
+                      </DropdownMenuItem>
+                      <DropdownMenuItem className="text-red-600">
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Excluir
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </TableCell>
+              </TableRow>
+            )
+          })}
         </TableBody>
       </Table>
     </div>

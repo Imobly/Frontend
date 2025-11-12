@@ -1,9 +1,7 @@
 "use client"
 
-import type React from "react"
-
-import { useState, useEffect } from "react"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import React, { useState, useEffect } from "react"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -11,15 +9,15 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Upload } from "lucide-react"
+import { useProperties } from "@/lib/hooks/useProperties"
 
-interface Expense {
-  id: string
-  type: "expense" | "maintenance"
+interface ExpenseFormData {
+  type: "maintenance" | "expense"
   category: string
   description: string
   amount: number
   date: string
-  property: string
+  property_id: number
   status: "pending" | "paid" | "scheduled"
   priority?: "low" | "medium" | "high" | "urgent"
   vendor?: string
@@ -30,13 +28,13 @@ interface Expense {
 interface ExpenseDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  expense?: Expense | null
-  onSave: (expense: Omit<Expense, "id">) => void
+  expense?: any | null
+  onSave: (expense: ExpenseFormData) => void
 }
 
 const expenseCategories = [
   "IPTU",
-  "Condomínio",
+  "Condomínio", 
   "Seguro",
   "Taxa de Administração",
   "Publicidade",
@@ -48,89 +46,71 @@ const expenseCategories = [
 
 const maintenanceCategories = [
   "Hidráulica",
-  "Elétrica",
+  "Elétrica", 
   "Pintura",
   "Limpeza",
   "Jardinagem",
   "Ar Condicionado",
-  "Portão/Fechadura",
-  "Telhado",
-  "Piso",
+  "Elevador",
+  "Portaria",
+  "Segurança",
   "Outros",
 ]
 
-const properties = [
-  "Apartamento Centro - Apt 101",
-  "Apartamento Centro - Apt 205",
-  "Casa Jardins",
-  "Loja Comercial - Centro",
-]
+const initialExpense: ExpenseFormData = {
+  type: "expense",
+  category: "",
+  description: "",
+  amount: 0,
+  date: new Date().toISOString().split("T")[0],
+  property_id: 0,
+  status: "pending",
+  priority: "medium",
+  vendor: "",
+  receipt: "",
+  notes: "",
+}
 
 export function ExpenseDialog({ open, onOpenChange, expense, onSave }: ExpenseDialogProps) {
-  const [formData, setFormData] = useState({
-    type: "expense" as "expense" | "maintenance",
-    category: "",
-    description: "",
-    amount: "",
-    date: "",
-    property: "",
-    status: "pending" as "pending" | "paid" | "scheduled",
-    priority: "" as "" | "low" | "medium" | "high" | "urgent",
-    vendor: "",
-    receipt: "",
-    notes: "",
-  })
+  const [formData, setFormData] = useState<ExpenseFormData>(initialExpense)
+  const [isLoading, setIsLoading] = useState(false)
+  
+  const { properties } = useProperties()
 
   useEffect(() => {
     if (expense) {
       setFormData({
-        type: expense.type,
-        category: expense.category,
-        description: expense.description,
-        amount: expense.amount.toString(),
-        date: expense.date,
-        property: expense.property,
-        status: expense.status,
-        priority: expense.priority || "",
+        type: expense.type || "expense",
+        category: expense.category || "",
+        description: expense.description || "",
+        amount: expense.amount || 0,
+        date: expense.date || new Date().toISOString().split("T")[0],
+        property_id: expense.property_id || 0,
+        status: expense.status || "pending",
+        priority: expense.priority || "medium",
         vendor: expense.vendor || "",
         receipt: expense.receipt || "",
         notes: expense.notes || "",
       })
     } else {
-      setFormData({
-        type: "expense",
-        category: "",
-        description: "",
-        amount: "",
-        date: new Date().toISOString().split("T")[0],
-        property: "",
-        status: "pending",
-        priority: "",
-        vendor: "",
-        receipt: "",
-        notes: "",
-      })
+      setFormData(initialExpense)
     }
-  }, [expense, open])
+  }, [expense])
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setIsLoading(true)
 
-    const expenseData = {
-      type: formData.type,
-      category: formData.category,
-      description: formData.description,
-      amount: Number.parseFloat(formData.amount),
-      date: formData.date,
-      property: formData.property,
-      status: formData.status,
-      ...(formData.priority && { priority: formData.priority }),
-      ...(formData.vendor && { vendor: formData.vendor }),
-      ...(formData.receipt && { receipt: formData.receipt }),
-      ...(formData.notes && { notes: formData.notes }),
+    try {
+      console.log("💾 Salvando despesa:", formData)
+      await onSave(formData)
+    } finally {
+      setIsLoading(false)
     }
+  }
 
-    onSave(expenseData)
+  const handleInputChange = (field: keyof ExpenseFormData, value: any) => {
+    setFormData(prev => ({ ...prev, [field]: value }))
   }
 
   const categories = formData.type === "maintenance" ? maintenanceCategories : expenseCategories
@@ -139,221 +119,295 @@ export function ExpenseDialog({ open, onOpenChange, expense, onSave }: ExpenseDi
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>
-            {expense ? "Editar" : "Nova"} {formData.type === "maintenance" ? "Manutenção" : "Despesa"}
-          </DialogTitle>
+          <DialogTitle>{expense ? "Editar Despesa" : "Nova Despesa"}</DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <Tabs
-            value={formData.type}
-            onValueChange={(value) =>
-              setFormData((prev) => ({ ...prev, type: value as "expense" | "maintenance", category: "" }))
-            }
-          >
+        <form onSubmit={handleSubmit}>
+          <Tabs value={formData.type} onValueChange={(value) => handleInputChange("type", value)} className="w-full">
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="expense">Despesa</TabsTrigger>
               <TabsTrigger value="maintenance">Manutenção</TabsTrigger>
             </TabsList>
 
             <TabsContent value="expense" className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="category">Categoria *</Label>
-                  <Select
-                    value={formData.category}
-                    onValueChange={(value) => setFormData((prev) => ({ ...prev, category: value }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione a categoria" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {categories.map((category) => (
-                        <SelectItem key={category} value={category}>
-                          {category}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+              <div className="grid gap-4 py-4">
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="category">Categoria *</Label>
+                    <Select value={formData.category} onValueChange={(value) => handleInputChange("category", value)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione a categoria" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {categories.map((category) => (
+                          <SelectItem key={category} value={category}>
+                            {category}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="property_id">Imóvel *</Label>
+                    <Select value={formData.property_id.toString()} onValueChange={(value) => handleInputChange("property_id", parseInt(value))}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione o imóvel" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {properties.map((property) => (
+                          <SelectItem key={property.id} value={property.id.toString()}>
+                            {property.name} - {property.address}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="amount">Valor (R$) *</Label>
+                    <Input
+                      id="amount"
+                      type="number"
+                      value={formData.amount}
+                      onChange={(e) => handleInputChange("amount", parseFloat(e.target.value) || 0)}
+                      placeholder="0,00"
+                      min="0"
+                      step="0.01"
+                      required
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="date">Data *</Label>
+                    <Input
+                      id="date"
+                      type="date"
+                      value={formData.date}
+                      onChange={(e) => handleInputChange("date", e.target.value)}
+                      required
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="status">Status</Label>
+                    <Select value={formData.status} onValueChange={(value) => handleInputChange("status", value)}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="pending">Pendente</SelectItem>
+                        <SelectItem value="paid">Pago</SelectItem>
+                        <SelectItem value="scheduled">Agendado</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="priority">Prioridade</Label>
+                    <Select value={formData.priority} onValueChange={(value) => handleInputChange("priority", value)}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="low">Baixa</SelectItem>
+                        <SelectItem value="medium">Média</SelectItem>
+                        <SelectItem value="high">Alta</SelectItem>
+                        <SelectItem value="urgent">Urgente</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
 
-                <div>
-                  <Label htmlFor="status">Status *</Label>
-                  <Select
-                    value={formData.status}
-                    onValueChange={(value) => setFormData((prev) => ({ ...prev, status: value as any }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="pending">Pendente</SelectItem>
-                      <SelectItem value="paid">Pago</SelectItem>
-                    </SelectContent>
-                  </Select>
+                <div className="space-y-2">
+                  <Label htmlFor="description">Descrição *</Label>
+                  <Textarea
+                    id="description"
+                    value={formData.description}
+                    onChange={(e) => handleInputChange("description", e.target.value)}
+                    placeholder="Descreva a despesa..."
+                    rows={3}
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="vendor">Fornecedor</Label>
+                  <Input
+                    id="vendor"
+                    value={formData.vendor}
+                    onChange={(e) => handleInputChange("vendor", e.target.value)}
+                    placeholder="Nome do fornecedor"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="receipt">Comprovante (URL)</Label>
+                  <Input
+                    id="receipt"
+                    value={formData.receipt}
+                    onChange={(e) => handleInputChange("receipt", e.target.value)}
+                    placeholder="https://exemplo.com/comprovante.pdf"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="notes">Observações</Label>
+                  <Textarea
+                    id="notes"
+                    value={formData.notes}
+                    onChange={(e) => handleInputChange("notes", e.target.value)}
+                    placeholder="Observações adicionais..."
+                    rows={2}
+                  />
                 </div>
               </div>
             </TabsContent>
 
             <TabsContent value="maintenance" className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="category">Categoria *</Label>
-                  <Select
-                    value={formData.category}
-                    onValueChange={(value) => setFormData((prev) => ({ ...prev, category: value }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione a categoria" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {categories.map((category) => (
-                        <SelectItem key={category} value={category}>
-                          {category}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+              <div className="grid gap-4 py-4">
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="category">Categoria *</Label>
+                    <Select value={formData.category} onValueChange={(value) => handleInputChange("category", value)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione a categoria" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {categories.map((category) => (
+                          <SelectItem key={category} value={category}>
+                            {category}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="property_id">Imóvel *</Label>
+                    <Select value={formData.property_id.toString()} onValueChange={(value) => handleInputChange("property_id", parseInt(value))}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione o imóvel" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {properties.map((property) => (
+                          <SelectItem key={property.id} value={property.id.toString()}>
+                            {property.name} - {property.address}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="amount">Valor (R$) *</Label>
+                    <Input
+                      id="amount"
+                      type="number"
+                      value={formData.amount}
+                      onChange={(e) => handleInputChange("amount", parseFloat(e.target.value) || 0)}
+                      placeholder="0,00"
+                      min="0"
+                      step="0.01"
+                      required
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="date">Data *</Label>
+                    <Input
+                      id="date"
+                      type="date"
+                      value={formData.date}
+                      onChange={(e) => handleInputChange("date", e.target.value)}
+                      required
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="status">Status</Label>
+                    <Select value={formData.status} onValueChange={(value) => handleInputChange("status", value)}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="pending">Pendente</SelectItem>
+                        <SelectItem value="paid">Pago</SelectItem>
+                        <SelectItem value="scheduled">Agendado</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="priority">Prioridade</Label>
+                    <Select value={formData.priority} onValueChange={(value) => handleInputChange("priority", value)}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="low">Baixa</SelectItem>
+                        <SelectItem value="medium">Média</SelectItem>
+                        <SelectItem value="high">Alta</SelectItem>
+                        <SelectItem value="urgent">Urgente</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
 
-                <div>
-                  <Label htmlFor="priority">Prioridade</Label>
-                  <Select
-                    value={formData.priority}
-                    onValueChange={(value) => setFormData((prev) => ({ ...prev, priority: value as any }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione a prioridade" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="low">Baixa</SelectItem>
-                      <SelectItem value="medium">Média</SelectItem>
-                      <SelectItem value="high">Alta</SelectItem>
-                      <SelectItem value="urgent">Urgente</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="status">Status *</Label>
-                  <Select
-                    value={formData.status}
-                    onValueChange={(value) => setFormData((prev) => ({ ...prev, status: value as any }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="pending">Pendente</SelectItem>
-                      <SelectItem value="scheduled">Agendado</SelectItem>
-                      <SelectItem value="paid">Concluído</SelectItem>
-                    </SelectContent>
-                  </Select>
+                <div className="space-y-2">
+                  <Label htmlFor="description">Descrição *</Label>
+                  <Textarea
+                    id="description"
+                    value={formData.description}
+                    onChange={(e) => handleInputChange("description", e.target.value)}
+                    placeholder="Descreva o serviço de manutenção..."
+                    rows={3}
+                    required
+                  />
                 </div>
 
-                <div>
+                <div className="space-y-2">
                   <Label htmlFor="vendor">Prestador de Serviço</Label>
                   <Input
                     id="vendor"
                     value={formData.vendor}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, vendor: e.target.value }))}
-                    placeholder="Nome do prestador"
+                    onChange={(e) => handleInputChange("vendor", e.target.value)}
+                    placeholder="Nome da empresa/profissional"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="receipt">Comprovante (URL)</Label>
+                  <Input
+                    id="receipt"
+                    value={formData.receipt}
+                    onChange={(e) => handleInputChange("receipt", e.target.value)}
+                    placeholder="https://exemplo.com/nota-fiscal.pdf"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="notes">Observações</Label>
+                  <Textarea
+                    id="notes"
+                    value={formData.notes}
+                    onChange={(e) => handleInputChange("notes", e.target.value)}
+                    placeholder="Detalhes técnicos, materiais utilizados, etc..."
+                    rows={2}
                   />
                 </div>
               </div>
             </TabsContent>
           </Tabs>
 
-          <div>
-            <Label htmlFor="description">Descrição *</Label>
-            <Input
-              id="description"
-              value={formData.description}
-              onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
-              placeholder="Descreva a despesa/manutenção"
-              required
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="amount">Valor (R$) *</Label>
-              <Input
-                id="amount"
-                type="number"
-                step="0.01"
-                value={formData.amount}
-                onChange={(e) => setFormData((prev) => ({ ...prev, amount: e.target.value }))}
-                placeholder="0,00"
-                required
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="date">Data *</Label>
-              <Input
-                id="date"
-                type="date"
-                value={formData.date}
-                onChange={(e) => setFormData((prev) => ({ ...prev, date: e.target.value }))}
-                required
-              />
-            </div>
-          </div>
-
-          <div>
-            <Label htmlFor="property">Imóvel *</Label>
-            <Select
-              value={formData.property}
-              onValueChange={(value) => setFormData((prev) => ({ ...prev, property: value }))}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione o imóvel" />
-              </SelectTrigger>
-              <SelectContent>
-                {properties.map((property) => (
-                  <SelectItem key={property} value={property}>
-                    {property}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div>
-            <Label htmlFor="receipt">Comprovante</Label>
-            <div className="flex items-center gap-2">
-              <Input
-                id="receipt"
-                value={formData.receipt}
-                onChange={(e) => setFormData((prev) => ({ ...prev, receipt: e.target.value }))}
-                placeholder="Nome do arquivo ou URL"
-              />
-              <Button type="button" variant="outline" size="sm">
-                <Upload className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-
-          <div>
-            <Label htmlFor="notes">Observações</Label>
-            <Textarea
-              id="notes"
-              value={formData.notes}
-              onChange={(e) => setFormData((prev) => ({ ...prev, notes: e.target.value }))}
-              placeholder="Informações adicionais..."
-              rows={3}
-            />
-          </div>
-
-          <div className="flex justify-end gap-2">
+          <DialogFooter className="mt-6">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancelar
             </Button>
-            <Button type="submit">{expense ? "Salvar" : "Criar"}</Button>
-          </div>
+            <Button type="submit" disabled={isLoading}>
+              {isLoading ? "Salvando..." : expense ? "Salvar Alterações" : "Criar Despesa"}
+            </Button>
+          </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>

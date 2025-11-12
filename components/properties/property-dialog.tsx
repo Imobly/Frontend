@@ -19,6 +19,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Upload, X, Plus, Edit, Building } from "lucide-react"
+import { Property } from "@/lib/types/property"
 
 interface Unit {
   id: string
@@ -29,27 +30,6 @@ interface Unit {
   rent: number
   status: 'vacant' | 'occupied' | 'maintenance'
   tenant?: string
-}
-
-interface Property {
-  id?: number
-  name: string
-  address: string
-  neighborhood: string
-  city: string
-  state: string
-  zipCode: string
-  type: string
-  area: number
-  bedrooms: number
-  bathrooms: number
-  parkingSpaces: number
-  rent: number
-  status: string
-  description: string
-  images: string[]
-  units?: Unit[]
-  isResidential?: boolean
 }
 
 interface PropertyDialogProps {

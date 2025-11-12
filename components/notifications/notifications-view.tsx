@@ -1,324 +1,248 @@
 "use client"
 
 import { useState } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Bell, AlertTriangle, Calendar, DollarSign, Wrench, CheckCircle, X, Eye } from "lucide-react"
-import { NotificationFilters } from "./notification-filters"
-
-interface Notification {
-  id: string
-  type: "contract_expiring" | "payment_overdue" | "maintenance_urgent" | "system_alert" | "reminder"
-  title: string
-  message: string
-  date: string
-  priority: "low" | "medium" | "high" | "urgent"
-  read: boolean
-  actionRequired: boolean
-  relatedId?: string
-  relatedType?: "contract" | "payment" | "maintenance" | "property"
-}
-
-const mockNotifications: Notification[] = [
-  {
-    id: "1",
-    type: "contract_expiring",
-    title: "Contrato vencendo em breve",
-    message: "O contrato do inquilino João Silva (Apartamento Centro - Apt 101) vence em 15 dias.",
-    date: "2024-01-20T10:30:00",
-    priority: "high",
-    read: false,
-    actionRequired: true,
-    relatedId: "1",
-    relatedType: "contract",
-  },
-  {
-    id: "2",
-    type: "payment_overdue",
-    title: "Pagamento em atraso",
-    message: "Aluguel de Maria Santos (Casa Jardins) está 5 dias em atraso. Valor: R$ 2.500,00",
-    date: "2024-01-19T14:15:00",
-    priority: "urgent",
-    read: false,
-    actionRequired: true,
-    relatedId: "2",
-    relatedType: "payment",
-  },
-  {
-    id: "3",
-    type: "maintenance_urgent",
-    title: "Manutenção urgente",
-    message: "Vazamento reportado no Apartamento Centro - Apt 205. Prioridade: Urgente",
-    date: "2024-01-19T09:45:00",
-    priority: "urgent",
-    read: false,
-    actionRequired: true,
-    relatedId: "3",
-    relatedType: "maintenance",
-  },
-  {
-    id: "4",
-    type: "reminder",
-    title: "Lembrete: Reajuste de aluguel",
-    message: "Aplicar reajuste de 5% no contrato de Pedro Costa a partir de 01/02/2024",
-    date: "2024-01-18T16:20:00",
-    priority: "medium",
-    read: true,
-    actionRequired: true,
-    relatedId: "4",
-    relatedType: "contract",
-  },
-  {
-    id: "5",
-    type: "system_alert",
-    title: "Backup realizado com sucesso",
-    message: "Backup automático dos dados foi concluído às 02:00",
-    date: "2024-01-18T02:00:00",
-    priority: "low",
-    read: true,
-    actionRequired: false,
-  },
-]
+import { Input } from "@/components/ui/input"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Bell, Search, CheckCircle, AlertTriangle, Info, Clock, Trash2 } from "lucide-react"
+import { useNotifications } from "@/lib/hooks/useNotifications"
 
 export function NotificationsView() {
-  const [notifications, setNotifications] = useState<Notification[]>(mockNotifications)
-  const [filters, setFilters] = useState({
-    type: "all",
-    priority: "all",
-    read: "all",
-    actionRequired: "all",
-  })
+  const [searchTerm, setSearchTerm] = useState("")
+  
+  const { notifications, loading, error, refetch, markAsRead, markAllAsRead, deleteNotification } = useNotifications()
 
-  const filteredNotifications = notifications.filter((notification) => {
-    const matchesType = filters.type === "all" || notification.type === filters.type
-    const matchesPriority = filters.priority === "all" || notification.priority === filters.priority
-    const matchesRead =
-      filters.read === "all" ||
-      (filters.read === "read" && notification.read) ||
-      (filters.read === "unread" && !notification.read)
-    const matchesAction =
-      filters.actionRequired === "all" ||
-      (filters.actionRequired === "required" && notification.actionRequired) ||
-      (filters.actionRequired === "not_required" && !notification.actionRequired)
-
-    return matchesType && matchesPriority && matchesRead && matchesAction
-  })
-
-  const unreadCount = notifications.filter((n) => !n.read).length
-  const urgentCount = notifications.filter((n) => n.priority === "urgent" && !n.read).length
-  const actionRequiredCount = notifications.filter((n) => n.actionRequired && !n.read).length
-
-  const markAsRead = (id: string) => {
-    setNotifications((prev) =>
-      prev.map((notification) => (notification.id === id ? { ...notification, read: true } : notification)),
+  // Mostrar loading
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="text-lg">Carregando notificações...</div>
+      </div>
     )
   }
 
-  const markAllAsRead = () => {
-    setNotifications((prev) => prev.map((notification) => ({ ...notification, read: true })))
+  // Mostrar erro
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="text-red-500">Erro: {error}</div>
+      </div>
+    )
   }
 
-  const deleteNotification = (id: string) => {
-    setNotifications((prev) => prev.filter((notification) => notification.id !== id))
+  const filteredNotifications = notifications.filter((notification) => {
+    const matchesSearch = 
+      notification.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      notification.message.toLowerCase().includes(searchTerm.toLowerCase())
+    return matchesSearch
+  })
+
+  const statusCounts = {
+    total: notifications.length,
+    unread: notifications.filter((n) => !n.read_status).length,
+    urgent: notifications.filter((n) => n.priority === "urgent").length,
+    actionRequired: notifications.filter((n) => n.action_required).length,
   }
 
-  const getTypeIcon = (type: string) => {
-    switch (type) {
-      case "contract_expiring":
-        return <Calendar className="h-4 w-4" />
-      case "payment_overdue":
-        return <DollarSign className="h-4 w-4" />
-      case "maintenance_urgent":
-        return <Wrench className="h-4 w-4" />
-      case "system_alert":
-        return <Bell className="h-4 w-4" />
-      case "reminder":
-        return <Bell className="h-4 w-4" />
-      default:
-        return <Bell className="h-4 w-4" />
+  const handleMarkAsRead = async (notificationId: string) => {
+    await markAsRead(notificationId)
+  }
+
+  const handleMarkAllAsRead = async () => {
+    await markAllAsRead()
+  }
+
+  const handleDelete = async (notificationId: string) => {
+    if (confirm('Tem certeza que deseja deletar esta notificação?')) {
+      await deleteNotification(notificationId)
     }
   }
 
-  const getTypeText = (type: string) => {
+  const getNotificationIcon = (type: string) => {
     switch (type) {
-      case "contract_expiring":
-        return "Contrato"
-      case "payment_overdue":
-        return "Pagamento"
-      case "maintenance_urgent":
-        return "Manutenção"
-      case "system_alert":
-        return "Sistema"
-      case "reminder":
-        return "Lembrete"
+      case 'contract_expiring':
+        return <Clock className="h-4 w-4 text-orange-500" />
+      case 'payment_overdue':
+        return <AlertTriangle className="h-4 w-4 text-red-500" />
+      case 'maintenance_urgent':
+        return <AlertTriangle className="h-4 w-4 text-red-600" />
+      case 'system_alert':
+        return <Info className="h-4 w-4 text-blue-500" />
       default:
-        return type
+        return <Bell className="h-4 w-4 text-gray-500" />
     }
   }
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case "urgent":
-        return "bg-danger text-danger-foreground"
-      case "high":
-        return "bg-orange-500 text-white"
-      case "medium":
-        return "bg-warning text-warning-foreground"
-      case "low":
-        return "bg-blue-500 text-white"
+      case 'urgent':
+        return 'border-l-red-500 bg-red-50'
+      case 'high':
+        return 'border-l-orange-500 bg-orange-50'
+      case 'medium':
+        return 'border-l-yellow-500 bg-yellow-50'
       default:
-        return "bg-muted text-muted-foreground"
-    }
-  }
-
-  const getPriorityText = (priority: string) => {
-    switch (priority) {
-      case "urgent":
-        return "Urgente"
-      case "high":
-        return "Alta"
-      case "medium":
-        return "Média"
-      case "low":
-        return "Baixa"
-      default:
-        return priority
+        return 'border-l-blue-500 bg-blue-50'
     }
   }
 
   return (
     <div className="space-y-6">
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Notificações</h1>
+          <p className="text-gray-600">Acompanhe alertas e lembretes importantes</p>
+        </div>
+        <Button onClick={handleMarkAllAsRead} variant="outline">
+          <CheckCircle className="mr-2 h-4 w-4" />
+          Marcar Todas como Lidas
+        </Button>
+      </div>
+
+      {/* Status Cards */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total</CardTitle>
             <Bell className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{notifications.length}</div>
-            <p className="text-xs text-muted-foreground">Notificações</p>
+            <div className="text-2xl font-bold">{statusCounts.total}</div>
+            <p className="text-xs text-muted-foreground">
+              Notificações no total
+            </p>
           </CardContent>
         </Card>
-
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Não Lidas</CardTitle>
-            <Bell className="h-4 w-4 text-warning" />
+            <div className="h-4 w-4 rounded-full bg-blue-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-warning">{unreadCount}</div>
-            <p className="text-xs text-muted-foreground">Pendentes</p>
+            <div className="text-2xl font-bold">{statusCounts.unread}</div>
+            <p className="text-xs text-muted-foreground">
+              Precisam de atenção
+            </p>
           </CardContent>
         </Card>
-
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Urgentes</CardTitle>
-            <AlertTriangle className="h-4 w-4 text-danger" />
+            <AlertTriangle className="h-4 w-4 text-red-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-danger">{urgentCount}</div>
-            <p className="text-xs text-muted-foreground">Requer atenção</p>
+            <div className="text-2xl font-bold">{statusCounts.urgent}</div>
+            <p className="text-xs text-red-600">
+              Ação imediata
+            </p>
           </CardContent>
         </Card>
-
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Ação Necessária</CardTitle>
-            <CheckCircle className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Requer Ação</CardTitle>
+            <Clock className="h-4 w-4 text-orange-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{actionRequiredCount}</div>
-            <p className="text-xs text-muted-foreground">Aguardando ação</p>
+            <div className="text-2xl font-bold">{statusCounts.actionRequired}</div>
+            <p className="text-xs text-muted-foreground">
+              Ações pendentes
+            </p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Filters and Actions */}
-      <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
-        <NotificationFilters filters={filters} onFiltersChange={setFilters} />
-
-        <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={markAllAsRead}>
-            Marcar todas como lidas
-          </Button>
+      {/* Search */}
+      <div className="flex items-center gap-4 flex-wrap">
+        <div className="relative flex-1 min-w-[200px] max-w-md">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+          <Input
+            placeholder="Buscar notificações..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10"
+          />
         </div>
       </div>
 
-      {/* Results */}
-      <div className="text-sm text-muted-foreground">
-        Mostrando {filteredNotifications.length} de {notifications.length} notificações
-      </div>
-
-      {/* Notifications List */}
-      <div className="space-y-3">
-        {filteredNotifications.map((notification) => (
-          <Card
-            key={notification.id}
-            className={`transition-all ${!notification.read ? "border-l-4 border-l-primary bg-muted/20" : ""}`}
-          >
-            <CardContent className="p-4">
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex items-start gap-3 flex-1">
-                  <div className={`p-2 rounded-full ${notification.read ? "bg-muted" : "bg-primary/10"}`}>
-                    {getTypeIcon(notification.type)}
-                  </div>
-
-                  <div className="flex-1 space-y-2">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h3
-                        className={`font-semibold ${!notification.read ? "text-foreground" : "text-muted-foreground"}`}
+      {/* Content */}
+      <div className="space-y-4">
+        {filteredNotifications.length === 0 ? (
+          <div className="text-center py-12">
+            <p className="text-gray-500">Nenhuma notificação encontrada.</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {filteredNotifications.map((notification) => (
+              <Card 
+                key={notification.id} 
+                className={`border-l-4 ${getPriorityColor(notification.priority)} ${
+                  !notification.read_status ? 'ring-2 ring-blue-100' : ''
+                }`}
+              >
+                <CardContent className="p-4">
+                  <div className="flex items-start justify-between">
+                    <div className="flex gap-3 flex-1">
+                      {getNotificationIcon(notification.type)}
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <h3 className={`font-medium ${!notification.read_status ? 'font-semibold' : ''}`}>
+                            {notification.title}
+                          </h3>
+                          {!notification.read_status && (
+                            <span className="h-2 w-2 bg-blue-500 rounded-full"></span>
+                          )}
+                          {notification.action_required && (
+                            <span className="px-2 py-1 bg-orange-100 text-orange-800 text-xs rounded">
+                              Ação Necessária
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-sm text-gray-700 mb-2">
+                          {notification.message}
+                        </p>
+                        <div className="flex items-center gap-4 text-xs text-gray-500">
+                          <span>
+                            {new Date(notification.date).toLocaleString('pt-BR')}
+                          </span>
+                          <span className="capitalize">
+                            Prioridade: {notification.priority === 'urgent' ? 'Urgente' :
+                                      notification.priority === 'high' ? 'Alta' :
+                                      notification.priority === 'medium' ? 'Média' : 'Baixa'}
+                          </span>
+                          <span className="capitalize">
+                            Tipo: {notification.type.replace('_', ' ')}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex gap-2 ml-4">
+                      {!notification.read_status && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleMarkAsRead(notification.id)}
+                          className="text-blue-600 hover:text-blue-700"
+                        >
+                          <CheckCircle className="h-4 w-4" />
+                        </Button>
+                      )}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDelete(notification.id)}
+                        className="text-red-600 hover:text-red-700"
                       >
-                        {notification.title}
-                      </h3>
-                      <Badge variant="outline">{getTypeText(notification.type)}</Badge>
-                      <Badge className={getPriorityColor(notification.priority)}>
-                        {getPriorityText(notification.priority)}
-                      </Badge>
-                      {notification.actionRequired && <Badge variant="secondary">Ação necessária</Badge>}
-                      {!notification.read && <Badge className="bg-primary text-primary-foreground">Nova</Badge>}
-                    </div>
-
-                    <p className="text-sm text-muted-foreground">{notification.message}</p>
-
-                    <div className="text-xs text-muted-foreground">
-                      {new Date(notification.date).toLocaleString("pt-BR")}
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </div>
                   </div>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  {!notification.read && (
-                    <Button variant="outline" size="sm" onClick={() => markAsRead(notification.id)}>
-                      <Eye className="h-4 w-4" />
-                    </Button>
-                  )}
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => deleteNotification(notification.id)}
-                    className="text-danger hover:text-danger"
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
       </div>
-
-      {filteredNotifications.length === 0 && (
-        <Card>
-          <CardContent className="p-8 text-center">
-            <Bell className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-lg font-semibold mb-2">Nenhuma notificação encontrada</h3>
-            <p className="text-muted-foreground">Não há notificações que correspondam aos filtros selecionados.</p>
-          </CardContent>
-        </Card>
-      )}
     </div>
   )
 }
