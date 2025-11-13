@@ -18,11 +18,22 @@ class ApiClient {
     // Interceptor para requisições
     this.client.interceptors.request.use(
       (config) => {
+        // Adiciona o token de autenticação automaticamente se disponível
+        if (typeof window !== 'undefined') {
+          const token = localStorage.getItem('access_token')
+          if (token && !config.headers['Authorization']) {
+            config.headers['Authorization'] = `Bearer ${token}`
+          }
+        }
+        
         // Log da requisição em desenvolvimento
         if (process.env.NODE_ENV === 'development') {
           console.log(`🚀 [API Request] ${config.method?.toUpperCase()} ${config.url}`)
           if (config.data) {
             console.log('📦 [Request Data]', config.data)
+          }
+          if (config.headers['Authorization']) {
+            console.log('🔐 [Auth Token]', 'Present')
           }
         }
         return config
@@ -49,6 +60,18 @@ class ApiClient {
         
         // Tratamento de erros customizado
         if (error.response) {
+          // Se for 401 (não autorizado), limpa o token e redireciona para login
+          if (error.response.status === 401) {
+            if (typeof window !== 'undefined') {
+              localStorage.removeItem('access_token')
+              localStorage.removeItem('user')
+              // Só redireciona se não estiver na página de login
+              if (!window.location.pathname.includes('/login')) {
+                window.location.href = '/login'
+              }
+            }
+          }
+          
           // Erro com resposta do servidor
           const apiError: ApiError = {
             detail: error.response.data?.detail || 'Erro interno do servidor'

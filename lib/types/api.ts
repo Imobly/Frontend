@@ -38,6 +38,7 @@ export interface PropertyUpdate extends Partial<PropertyBase> {}
 
 export interface PropertyResponse extends PropertyBase {
   id: number;
+  user_id: number;
   created_at: string;
   updated_at: string;
 }
@@ -74,6 +75,7 @@ export interface TenantUpdate extends Partial<TenantBase> {}
 
 export interface TenantResponse extends TenantBase {
   id: number;
+  user_id: number;
   created_at: string;
   updated_at: string;
 }
@@ -96,6 +98,7 @@ export interface UnitUpdate extends Partial<UnitBase> {}
 
 export interface UnitResponse extends UnitBase {
   id: number;
+  user_id: number;
   created_at: string;
   updated_at: string;
 }
@@ -121,6 +124,7 @@ export interface ContractUpdate extends Partial<ContractBase> {}
 
 export interface ContractResponse extends ContractBase {
   id: number;
+  user_id: number;
   created_at: string;
   updated_at: string;
 }
@@ -146,6 +150,7 @@ export interface PaymentUpdate extends Partial<PaymentBase> {}
 
 export interface PaymentResponse extends PaymentBase {
   id: number;
+  user_id: number;
   created_at: string;
   updated_at: string;
 }
@@ -181,6 +186,7 @@ export interface ExpenseUpdate extends Partial<ExpenseBase> {}
 
 export interface ExpenseResponse extends ExpenseBase {
   id: string;
+  user_id: number;
   created_at: string;
   updated_at: string;
 }
@@ -210,6 +216,7 @@ export interface NotificationUpdate extends Partial<NotificationBase> {}
 
 export interface NotificationResponse extends NotificationBase {
   id: string;
+  user_id: number;
   created_at: string;
   updated_at: string;
 }

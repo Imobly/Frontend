@@ -5,11 +5,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Building2, Users, CreditCard, TrendingUp, AlertTriangle, Plus, Calendar, RefreshCw } from "lucide-react"
+import { Building2, Users, CreditCard, TrendingUp, AlertTriangle, Plus, Calendar, RefreshCw, Home } from "lucide-react"
 import { OverviewChart } from "@/components/overview-chart"
 import { RecentPayments } from "@/components/recent-payments"
 import { PropertyStatusGrid } from "@/components/property-status-grid"
 import { useDashboard } from "@/lib/hooks/useDashboard"
+import { EmptyState } from "@/components/ui/empty-state"
 
 export function DashboardOverview() {
   const [selectedPeriod, setSelectedPeriod] = useState("6months")
@@ -18,10 +19,11 @@ export function DashboardOverview() {
   // Loading state
   if (loading) {
     return (
-      <div className="space-y-8">
-        <div className="flex items-center justify-center h-64">
-          <RefreshCw className="h-8 w-8 animate-spin text-gray-400" />
-          <span className="ml-2 text-gray-600">Carregando dashboard...</span>
+      <div className="flex flex-col items-center justify-center h-96 space-y-4">
+        <RefreshCw className="h-8 w-8 animate-spin text-blue-600" />
+        <div>
+          <h2 className="text-xl font-semibold text-center">Carregando Dashboard</h2>
+          <p className="text-gray-500 text-center mt-2">Aguarde enquanto carregamos seus dados...</p>
         </div>
       </div>
     )
@@ -30,19 +32,16 @@ export function DashboardOverview() {
   // Error state
   if (error) {
     return (
-      <div className="space-y-8">
-        <div className="flex items-center justify-center h-64">
-          <div className="text-center">
-            <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-            <p className="text-red-600 mb-2">Erro ao carregar dashboard</p>
-            <p className="text-gray-600 text-sm mb-4">{error}</p>
-            <Button onClick={refetch} variant="outline">
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Tentar novamente
-            </Button>
-          </div>
-        </div>
-      </div>
+      <EmptyState
+        icon={AlertTriangle}
+        title="Erro ao carregar dashboard"
+        description={`Não foi possível carregar os dados do dashboard. ${error}`}
+        action={{
+          label: "Tentar novamente",
+          onClick: refetch
+        }}
+        variant="error"
+      />
     )
   }
 

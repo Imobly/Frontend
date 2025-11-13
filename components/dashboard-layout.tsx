@@ -12,7 +12,6 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Home, Building2, Users, CreditCard, Receipt, Bell, Menu, Settings, LogOut, User } from "lucide-react"
 import { useAuth } from "@/lib/contexts/auth"
-import { UserSettingsDialog } from "@/components/auth/user-settings-dialog"
 
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: Home },
@@ -31,12 +30,16 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const pathname = usePathname()
   const router = useRouter()
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [settingsOpen, setSettingsOpen] = useState(false)
   const { user, logout } = useAuth()
 
-  const handleLogout = () => {
-    logout()
-    router.push('/login')
+  const handleLogout = async () => {
+    try {
+      await logout()
+      router.push('/login')
+    } catch (error) {
+      console.error('Erro ao fazer logout:', error)
+      router.push('/login')
+    }
   }
 
   const getUserInitials = () => {
@@ -103,7 +106,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                 className="w-full justify-start text-gray-600 hover:bg-gray-100 hover:text-gray-900"
                 onClick={() => {
                   setSidebarOpen(false)
-                  setSettingsOpen(true)
+                  router.push('/settings')
                 }}
               >
                 <User className="mr-3 h-5 w-5" />
@@ -182,11 +185,11 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" className="w-56">
-                <DropdownMenuItem onClick={() => setSettingsOpen(true)}>
+                <DropdownMenuItem onClick={() => router.push('/settings')}>
                   <User className="mr-2 h-4 w-4" />
                   Perfil
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setSettingsOpen(true)}>
+                <DropdownMenuItem onClick={() => router.push('/settings')}>
                   <Settings className="mr-2 h-4 w-4" />
                   Configurações
                 </DropdownMenuItem>
@@ -207,12 +210,6 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           <div className="p-4 md:p-8">{children}</div>
         </main>
       </div>
-
-      {/* User Settings Dialog */}
-      <UserSettingsDialog 
-        open={settingsOpen} 
-        onOpenChange={setSettingsOpen} 
-      />
     </div>
   )
 }

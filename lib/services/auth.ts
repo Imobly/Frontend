@@ -1,6 +1,6 @@
 import { LoginRequest, RegisterRequest, ChangePasswordRequest, AuthResponse, User } from '../types/auth';
 
-const AUTH_API_BASE_URL = 'http://localhost:8001';
+const AUTH_API_BASE_URL = process.env.NEXT_PUBLIC_AUTH_API_URL || 'http://localhost:8001/api/v1/auth';
 const USE_MOCK_AUTH = false; // Usando a API real agora
 
 class AuthService {
@@ -41,7 +41,7 @@ class AuthService {
     }
 
     // Implementação real da API
-    const response = await fetch(`${AUTH_API_BASE_URL}/api/v1/auth/login`, {
+    const response = await fetch(`${AUTH_API_BASE_URL}/login`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -60,7 +60,7 @@ class AuthService {
     const tokenData = await response.json();
     
     // Busca dados do usuário com o token
-    const userResponse = await fetch(`${AUTH_API_BASE_URL}/api/v1/auth/me`, {
+    const userResponse = await fetch(`${AUTH_API_BASE_URL}/me`, {
       headers: {
         'Authorization': `Bearer ${tokenData.access_token}`,
       },
@@ -121,7 +121,7 @@ class AuthService {
     }
 
     // Implementação real da API
-    const response = await fetch(`${AUTH_API_BASE_URL}/api/v1/auth/register`, {
+    const response = await fetch(`${AUTH_API_BASE_URL}/register`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -163,7 +163,7 @@ class AuthService {
     }
 
     // Implementação real da API
-    const response = await fetch(`${AUTH_API_BASE_URL}/api/v1/auth/change-password`, {
+    const response = await fetch(`${AUTH_API_BASE_URL}/change-password`, {
       method: 'POST',
       headers: this.getAuthHeaders(),
       body: JSON.stringify({
@@ -190,7 +190,7 @@ class AuthService {
 
     // Implementação real da API
     try {
-      const response = await fetch(`${AUTH_API_BASE_URL}/api/v1/auth/me`, {
+      const response = await fetch(`${AUTH_API_BASE_URL}/me`, {
         headers: this.getAuthHeaders(),
       });
 
@@ -218,7 +218,25 @@ class AuthService {
     }
   }
 
-  logout(): void {
+  async logout(): Promise<void> {
+    const token = localStorage.getItem('access_token');
+    
+    // Chama o endpoint de logout da API se houver token
+    if (token && !USE_MOCK_AUTH) {
+      try {
+        await fetch(`${AUTH_API_BASE_URL}/logout`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+      } catch (error) {
+        // Ignora erros do logout da API, mas limpa localmente mesmo assim
+        console.error('Erro ao fazer logout na API:', error);
+      }
+    }
+    
+    // Limpa o localStorage independente do resultado da API
     localStorage.removeItem('access_token');
     localStorage.removeItem('user');
   }
@@ -230,6 +248,31 @@ class AuthService {
   getStoredUser(): User | null {
     const savedUser = localStorage.getItem('user');
     return savedUser ? JSON.parse(savedUser) : null;
+  }
+
+  async updateUser(userData: { email?: string; full_name?: string }): Promise<User> {
+    const response = await fetch(`${AUTH_API_BASE_URL}/me`, {
+      method: 'PUT',
+      headers: this.getAuthHeaders(),
+      body: JSON.stringify(userData),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ detail: 'Erro ao atualizar usuário' }));
+      throw new Error(errorData.detail || 'Erro ao atualizar usuário');
+    }
+
+    const data = await response.json();
+    const user: User = {
+      id: data.id.toString(),
+      email: data.email,
+      name: data.full_name || data.username,
+      created_at: data.created_at,
+      updated_at: data.updated_at,
+    };
+    
+    localStorage.setItem('user', JSON.stringify(user));
+    return user;
   }
 }
 

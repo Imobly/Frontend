@@ -4,13 +4,14 @@ import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Plus, Search, Filter, Grid3X3, List, AlertTriangle, TrendingUp, CheckCircle, Clock, XCircle } from "lucide-react"
+import { Plus, Search, Filter, Grid3X3, List, AlertTriangle, TrendingUp, CheckCircle, Clock, XCircle, RefreshCw, DollarSign } from "lucide-react"
 import { usePayments } from "@/lib/hooks/usePayments"
 import { PaymentDialog } from "./payment-dialog"
 import { PaymentCard } from "./payment-card"
 import { PaymentList } from "./payment-list"
 import { PaymentCreate, PaymentResponse } from "@/lib/types/api"
 import { convertApiToPayment, Payment } from "@/lib/types/payment"
+import { EmptyState } from "@/components/ui/empty-state"
 
 
 
@@ -24,8 +25,12 @@ export function PaymentsView() {
   // Mostrar loading
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-96">
-        <div className="text-lg">Carregando pagamentos...</div>
+      <div className="flex flex-col items-center justify-center h-96 space-y-4">
+        <RefreshCw className="h-8 w-8 animate-spin text-blue-600" />
+        <div>
+          <h2 className="text-xl font-semibold text-center">Carregando Pagamentos</h2>
+          <p className="text-gray-500 text-center mt-2">Aguarde um momento...</p>
+        </div>
       </div>
     )
   }
@@ -33,9 +38,16 @@ export function PaymentsView() {
   // Mostrar erro
   if (error) {
     return (
-      <div className="flex items-center justify-center h-96">
-        <div className="text-red-500">Erro: {error}</div>
-      </div>
+      <EmptyState
+        icon={AlertTriangle}
+        title="Erro ao carregar pagamentos"
+        description={`Não foi possível carregar a lista de pagamentos. ${error}`}
+        action={{
+          label: "Tentar novamente",
+          onClick: refetch
+        }}
+        variant="error"
+      />
     )
   }
 
@@ -218,23 +230,24 @@ export function PaymentsView() {
       </div>
 
       {/* Content */}
-      {filteredPayments.length === 0 ? (
+      {payments.length === 0 ? (
+        <EmptyState
+          icon={DollarSign}
+          title="Nenhum pagamento cadastrado"
+          description="Comece registrando seu primeiro pagamento de aluguel."
+          action={{
+            label: "Adicionar Primeiro Pagamento",
+            onClick: handleCreatePayment
+          }}
+        />
+      ) : filteredPayments.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-16">
             <AlertTriangle className="h-12 w-12 text-gray-400 mb-4" />
             <h3 className="text-lg font-semibold text-gray-600 mb-2">Nenhum pagamento encontrado</h3>
             <p className="text-gray-500 text-center mb-4">
-              {searchTerm 
-                ? "Tente ajustar os filtros ou termos de busca"
-                : "Comece criando seu primeiro pagamento"
-              }
+              Tente ajustar os filtros ou termos de busca
             </p>
-            {!searchTerm && (
-              <Button onClick={handleCreatePayment}>
-                <Plus className="mr-2 h-4 w-4" />
-                Criar Primeiro Pagamento
-              </Button>
-            )}
           </CardContent>
         </Card>
       ) : viewMode === "grid" ? (

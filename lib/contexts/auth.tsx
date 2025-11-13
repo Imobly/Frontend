@@ -59,13 +59,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const logout = () => {
-    authService.logout();
-    setUser(null);
+  const logout = async () => {
+    try {
+      await authService.logout();
+    } finally {
+      setUser(null);
+    }
   };
 
   const changePassword = async (data: ChangePasswordRequest) => {
     await authService.changePassword(data);
+  };
+
+  const updateUser = async (userData: { email?: string; full_name?: string }) => {
+    const updatedUser = await authService.updateUser(userData);
+    setUser(updatedUser);
+    return updatedUser;
   };
 
   const isAuthenticated = !!user;
@@ -78,6 +87,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     register,
     logout,
     changePassword,
+    updateUser,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

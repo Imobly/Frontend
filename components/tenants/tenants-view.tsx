@@ -4,9 +4,10 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Plus, Search, Grid3X3, List, Users, UserCheck, UserX, Edit, Trash2 } from "lucide-react"
+import { Plus, Search, Grid3X3, List, Users, UserCheck, UserX, Edit, Trash2, RefreshCw, AlertTriangle } from "lucide-react"
 import { useTenants } from "@/lib/hooks/useTenants"
 import { TenantDialog } from "@/components/tenants/tenant-dialog"
+import { EmptyState } from "@/components/ui/empty-state"
 
 export function TenantsView() {
   const [searchTerm, setSearchTerm] = useState("")
@@ -19,8 +20,12 @@ export function TenantsView() {
   // Mostrar loading
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-96">
-        <div className="text-lg">Carregando inquilinos...</div>
+      <div className="flex flex-col items-center justify-center h-96 space-y-4">
+        <RefreshCw className="h-8 w-8 animate-spin text-blue-600" />
+        <div>
+          <h2 className="text-xl font-semibold text-center">Carregando Inquilinos</h2>
+          <p className="text-gray-500 text-center mt-2">Aguarde um momento...</p>
+        </div>
       </div>
     )
   }
@@ -28,9 +33,16 @@ export function TenantsView() {
   // Mostrar erro
   if (error) {
     return (
-      <div className="flex items-center justify-center h-96">
-        <div className="text-red-500">Erro: {error}</div>
-      </div>
+      <EmptyState
+        icon={AlertTriangle}
+        title="Erro ao carregar inquilinos"
+        description={`Não foi possível carregar a lista de inquilinos. ${error}`}
+        action={{
+          label: "Tentar novamente",
+          onClick: refetch
+        }}
+        variant="error"
+      />
     )
   }
 
@@ -169,9 +181,19 @@ export function TenantsView() {
 
       {/* Content */}
       <div className="space-y-6">
-        {filteredTenants.length === 0 ? (
+        {tenants.length === 0 ? (
+          <EmptyState
+            icon={Users}
+            title="Nenhum inquilino cadastrado"
+            description="Comece adicionando seu primeiro inquilino ao sistema."
+            action={{
+              label: "Adicionar Primeiro Inquilino",
+              onClick: handleAdd
+            }}
+          />
+        ) : filteredTenants.length === 0 ? (
           <div className="text-center py-12">
-            <p className="text-gray-500">Nenhum inquilino encontrado.</p>
+            <p className="text-gray-500">Nenhum inquilino encontrado com os filtros aplicados.</p>
           </div>
         ) : (
           <div className={viewMode === "grid" ? "grid gap-4 md:grid-cols-2 lg:grid-cols-3" : "space-y-4"}>

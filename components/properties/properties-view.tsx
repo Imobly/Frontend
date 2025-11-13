@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Plus, Search, Filter, Grid3X3, List } from "lucide-react"
+import { Plus, Search, Filter, Grid3X3, List, AlertTriangle, RefreshCw } from "lucide-react"
+import { EmptyState } from "@/components/ui/empty-state"
 import { PropertyCard } from "@/components/properties/property-card"
 import { PropertyList } from "@/components/properties/property-list"
 import { PropertyDialog } from "@/components/properties/property-dialog"
@@ -25,8 +26,19 @@ export function PropertiesView() {
   // Mostrar loading
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-96">
-        <div className="text-lg">Carregando propriedades...</div>
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Imóveis</h1>
+            <p className="text-gray-600">Gerencie sua carteira de imóveis</p>
+          </div>
+        </div>
+        <div className="flex items-center justify-center h-96">
+          <div className="text-center">
+            <RefreshCw className="h-8 w-8 animate-spin text-blue-600 mx-auto mb-4" />
+            <p className="text-lg text-gray-600">Carregando propriedades...</p>
+          </div>
+        </div>
       </div>
     )
   }
@@ -34,8 +46,23 @@ export function PropertiesView() {
   // Mostrar erro
   if (error) {
     return (
-      <div className="flex items-center justify-center h-96">
-        <div className="text-red-500">Erro: {error}</div>
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Imóveis</h1>
+            <p className="text-gray-600">Gerencie sua carteira de imóveis</p>
+          </div>
+        </div>
+        <EmptyState
+          icon={AlertTriangle}
+          title="Erro ao carregar propriedades"
+          description={`Não foi possível carregar as propriedades. ${error}`}
+          action={{
+            label: "Tentar novamente",
+            onClick: refetch
+          }}
+          variant="error"
+        />
       </div>
     )
   }
@@ -216,26 +243,21 @@ export function PropertiesView() {
 
       {/* Content */}
       {filteredProperties.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-16">
-            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-              <Plus className="h-8 w-8 text-gray-400" />
-            </div>
-            <h3 className="text-lg font-semibold text-gray-600 mb-2">Nenhum imóvel encontrado</h3>
-            <p className="text-gray-500 text-center mb-4">
-              {searchTerm 
-                ? "Tente ajustar os filtros ou termos de busca"
-                : "Comece adicionando seu primeiro imóvel"
-              }
-            </p>
-            {!searchTerm && (
-              <Button onClick={handleAdd}>
-                <Plus className="mr-2 h-4 w-4" />
-                Adicionar Primeiro Imóvel
-              </Button>
-            )}
-          </CardContent>
-        </Card>
+        <EmptyState
+          icon={Plus}
+          title={searchTerm ? "Nenhum imóvel encontrado" : "Nenhum imóvel cadastrado"}
+          description={
+            searchTerm 
+              ? "Tente ajustar os filtros ou termos de busca para encontrar o que procura."
+              : "Comece adicionando seu primeiro imóvel ao sistema. Você poderá gerenciar inquilinos, pagamentos e muito mais."
+          }
+          action={
+            !searchTerm ? {
+              label: "Adicionar Primeiro Imóvel",
+              onClick: handleAdd
+            } : undefined
+          }
+        />
       ) : viewMode === "grid" ? (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {filteredProperties.map((property) => (
