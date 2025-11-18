@@ -47,6 +47,18 @@ export function DashboardOverview() {
 
   return (
     <div className="space-y-8">
+      {/* Aviso de Dashboard em Desenvolvimento */}
+      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 flex items-start gap-3">
+        <AlertTriangle className="h-5 w-5 text-yellow-600 mt-0.5" />
+        <div className="flex-1">
+          <h3 className="font-semibold text-yellow-900">Dashboard em Desenvolvimento</h3>
+          <p className="text-sm text-yellow-700 mt-1">
+            Os dados do dashboard ainda não estão sendo carregados do backend. Os números exibidos são temporários.
+            Configure o endpoint <code className="bg-yellow-100 px-1 rounded">/api/v1/dashboard/summary</code> no backend para ver dados reais.
+          </p>
+        </div>
+      </div>
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>

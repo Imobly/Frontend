@@ -20,6 +20,7 @@ const navigation = [
   { name: "Pagamentos", href: "/payments", icon: CreditCard },
   { name: "Despesas", href: "/expenses", icon: Receipt },
   { name: "Notificações", href: "/notifications", icon: Bell },
+  { name: "Configurações", href: "/settings", icon: Settings },
 ]
 
 interface DashboardLayoutProps {
@@ -103,18 +104,6 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
               
               <Button
                 variant="ghost"
-                className="w-full justify-start text-gray-600 hover:bg-gray-100 hover:text-gray-900"
-                onClick={() => {
-                  setSidebarOpen(false)
-                  router.push('/settings')
-                }}
-              >
-                <User className="mr-3 h-5 w-5" />
-                Perfil
-              </Button>
-              
-              <Button
-                variant="ghost"
                 className="w-full justify-start text-red-600 hover:bg-red-100 hover:text-red-700"
                 onClick={() => {
                   setSidebarOpen(false)
@@ -173,33 +162,15 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
               </div>
             </div>
             
-            {/* Menu dropdown */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  className="w-full justify-start text-gray-600 hover:bg-gray-100 hover:text-gray-900"
-                >
-                  <Settings className="mr-3 h-5 w-5" />
-                  Configurações
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="w-56">
-                <DropdownMenuItem onClick={() => router.push('/settings')}>
-                  <User className="mr-2 h-4 w-4" />
-                  Perfil
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => router.push('/settings')}>
-                  <Settings className="mr-2 h-4 w-4" />
-                  Configurações
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleLogout} className="text-red-600">
-                  <LogOut className="mr-2 h-4 w-4" />
-                  Sair
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            {/* Logout button */}
+            <Button
+              variant="ghost"
+              className="w-full justify-start text-red-600 hover:bg-red-100 hover:text-red-700"
+              onClick={handleLogout}
+            >
+              <LogOut className="mr-3 h-5 w-5" />
+              Sair
+            </Button>
           </div>
         </div>
       </div>

@@ -16,6 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Upload, X } from "lucide-react"
+import { apiClient } from "@/lib/api/client"
 
 interface TenantFormData {
   name: string
@@ -35,6 +36,18 @@ interface TenantFormData {
     type: 'identity' | 'contract' | 'other'
     url: string
   }[]
+  contract?: {
+    title: string
+    property_id: number | null
+    start_date: string
+    end_date: string
+    rent: string
+    deposit: string
+    interest_rate: string
+    fine_rate: string
+    status: 'active' | 'expired' | 'terminated'
+    document_url: string
+  }
   status: 'active' | 'inactive'
 }
 
@@ -58,12 +71,46 @@ const initialTenant: TenantFormData = {
     relationship: "",
   },
   documents: [],
+  contract: {
+    title: "",
+    property_id: null,
+    start_date: "",
+    end_date: "",
+    rent: "",
+    deposit: "",
+    interest_rate: "0",
+    fine_rate: "0",
+    status: "active",
+    document_url: "",
+  },
   status: "active",
 }
 
 export function TenantDialog({ open, onOpenChange, tenant, onSave }: TenantDialogProps) {
   const [formData, setFormData] = useState<TenantFormData>(initialTenant)
   const [isLoading, setIsLoading] = useState(false)
+  const [properties, setProperties] = useState<any[]>([])
+  const [loadingProperties, setLoadingProperties] = useState(false)
+
+  // Carregar propriedades ao abrir o dialog
+  useEffect(() => {
+    if (open) {
+      loadProperties()
+    }
+  }, [open])
+
+  const loadProperties = async () => {
+    setLoadingProperties(true)
+    try {
+      const response = await apiClient.get('/properties')
+      setProperties(response.data || [])
+    } catch (error) {
+      console.error('Erro ao carregar propriedades:', error)
+      setProperties([])
+    } finally {
+      setLoadingProperties(false)
+    }
+  }
 
   useEffect(() => {
     if (tenant) {
@@ -80,6 +127,18 @@ export function TenantDialog({ open, onOpenChange, tenant, onSave }: TenantDialo
           relationship: "",
         },
         documents: tenant.documents || [],
+        contract: tenant.contract || {
+          title: "",
+          property_id: null,
+          start_date: "",
+          end_date: "",
+          rent: "",
+          deposit: "",
+          interest_rate: "0",
+          fine_rate: "0",
+          status: "active",
+          document_url: "",
+        },
         status: tenant.status || "active",
       })
     } else {
@@ -154,8 +213,9 @@ export function TenantDialog({ open, onOpenChange, tenant, onSave }: TenantDialo
 
         <form onSubmit={handleSubmit}>
           <Tabs defaultValue="personal" className="w-full">
-            <TabsList className="grid w-full grid-cols-3">
+            <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="personal">Dados Pessoais</TabsTrigger>
+              <TabsTrigger value="contract">Contrato</TabsTrigger>
               <TabsTrigger value="emergency">Contato de Emergência</TabsTrigger>
               <TabsTrigger value="documents">Documentos</TabsTrigger>
             </TabsList>
@@ -243,6 +303,152 @@ export function TenantDialog({ open, onOpenChange, tenant, onSave }: TenantDialo
                   </Select>
                 </div>
               </div>
+            </TabsContent>
+
+            <TabsContent value="contract" className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Informações do Contrato</CardTitle>
+                  <CardDescription>
+                    Vincule o inquilino a um imóvel e defina os termos do contrato
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="space-y-2 md:col-span-2">
+                      <Label htmlFor="contract_title">Título do Contrato</Label>
+                      <Input
+                        id="contract_title"
+                        value={formData.contract?.title || ""}
+                        onChange={(e) => handleNestedChange("contract", "title", e.target.value)}
+                        placeholder="Ex: Contrato de Locação - Apartamento 101"
+                      />
+                    </div>
+
+                    <div className="space-y-2 md:col-span-2">
+                      <Label htmlFor="contract_property">Imóvel</Label>
+                      <Select
+                        value={formData.contract?.property_id?.toString() || ""}
+                        onValueChange={(value) => handleNestedChange("contract", "property_id", parseInt(value))}
+                        disabled={loadingProperties}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder={loadingProperties ? "Carregando..." : "Selecione um imóvel"} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {properties.map((property) => (
+                            <SelectItem key={property.id} value={property.id.toString()}>
+                              {property.title} - {property.address}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="contract_start_date">Data de Início</Label>
+                      <Input
+                        id="contract_start_date"
+                        type="date"
+                        value={formData.contract?.start_date || ""}
+                        onChange={(e) => handleNestedChange("contract", "start_date", e.target.value)}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="contract_end_date">Data de Término</Label>
+                      <Input
+                        id="contract_end_date"
+                        type="date"
+                        value={formData.contract?.end_date || ""}
+                        onChange={(e) => handleNestedChange("contract", "end_date", e.target.value)}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="contract_rent">Valor do Aluguel (R$)</Label>
+                      <Input
+                        id="contract_rent"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={formData.contract?.rent || ""}
+                        onChange={(e) => handleNestedChange("contract", "rent", e.target.value)}
+                        placeholder="Ex: 1500.00"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="contract_deposit">Depósito/Caução (R$)</Label>
+                      <Input
+                        id="contract_deposit"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={formData.contract?.deposit || ""}
+                        onChange={(e) => handleNestedChange("contract", "deposit", e.target.value)}
+                        placeholder="Ex: 3000.00"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="contract_interest_rate">Taxa de Juros (% ao mês)</Label>
+                      <Input
+                        id="contract_interest_rate"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        max="100"
+                        value={formData.contract?.interest_rate || ""}
+                        onChange={(e) => handleNestedChange("contract", "interest_rate", e.target.value)}
+                        placeholder="Ex: 2.00"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="contract_fine_rate">Taxa de Multa (% do valor)</Label>
+                      <Input
+                        id="contract_fine_rate"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        max="100"
+                        value={formData.contract?.fine_rate || ""}
+                        onChange={(e) => handleNestedChange("contract", "fine_rate", e.target.value)}
+                        placeholder="Ex: 10.00"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="contract_status">Status do Contrato</Label>
+                      <Select
+                        value={formData.contract?.status || "active"}
+                        onValueChange={(value) => handleNestedChange("contract", "status", value)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="active">Ativo</SelectItem>
+                          <SelectItem value="expired">Expirado</SelectItem>
+                          <SelectItem value="terminated">Rescindido</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="contract_document_url">URL do Documento (opcional)</Label>
+                      <Input
+                        id="contract_document_url"
+                        type="url"
+                        value={formData.contract?.document_url || ""}
+                        onChange={(e) => handleNestedChange("contract", "document_url", e.target.value)}
+                        placeholder="https://..."
+                      />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
             </TabsContent>
 
             <TabsContent value="emergency" className="space-y-4">

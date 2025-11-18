@@ -34,31 +34,40 @@ export class ContractsService {
   async renewContract(
     id: number,
     newEndDate: string,
-    newRentAmount?: number
+    newRent?: number
   ): Promise<ContractResponse> {
-    const data: any = { new_end_date: newEndDate }
-    if (newRentAmount) {
-      data.new_rent_amount = newRentAmount
+    const params: any = { new_end_date: newEndDate }
+    if (newRent !== undefined) {
+      params.new_rent = newRent
     }
-    return apiClient.post<ContractResponse>(`${this.endpoint}/${id}/renew`, data)
+    return apiClient.patch<ContractResponse>(`${this.endpoint}/${id}/renew`, null, { params })
   }
 
-  // Rescindir contrato
-  async terminateContract(
+  // Atualizar status do contrato
+  async updateStatus(
     id: number,
-    terminationDate: string,
-    reason?: string
+    newStatus: 'active' | 'expired' | 'terminated'
   ): Promise<ContractResponse> {
-    const data: any = { termination_date: terminationDate }
-    if (reason) {
-      data.reason = reason
-    }
-    return apiClient.post<ContractResponse>(`${this.endpoint}/${id}/terminate`, data)
+    return apiClient.patch<ContractResponse>(`${this.endpoint}/${id}/status`, null, {
+      params: { new_status: newStatus }
+    })
   }
 
   // Obter contratos que vencem em X dias
-  async getExpiringContracts(days: number = 30): Promise<ContractResponse[]> {
-    return apiClient.get<ContractResponse[]>(`${this.endpoint}/expiring/${days}`)
+  async getExpiringContracts(daysAhead: number = 30): Promise<ContractResponse[]> {
+    return apiClient.get<ContractResponse[]>(`${this.endpoint}/expiring`, {
+      params: { days_ahead: daysAhead }
+    })
+  }
+
+  // Obter contratos ativos
+  async getActiveContracts(): Promise<ContractResponse[]> {
+    return apiClient.get<ContractResponse[]>(`${this.endpoint}/active`)
+  }
+
+  // Deletar contrato
+  async deleteContract(id: number): Promise<{ message: string }> {
+    return apiClient.delete<{ message: string }>(`${this.endpoint}/${id}`)
   }
 }
 

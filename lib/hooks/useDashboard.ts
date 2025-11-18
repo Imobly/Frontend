@@ -18,8 +18,35 @@ export function useDashboard(): UseDashboardReturn {
     try {
       setLoading(true)
       setError(null)
-      const data = await ApiService.dashboard.getSummary()
-      setSummary(data)
+      
+      // TODO: Backend ainda não tem endpoint de dashboard configurado com CORS
+      // Temporariamente retornando dados mockados
+      console.warn('⚠️ Dashboard endpoint não disponível. Usando dados mockados.')
+      
+      const mockData = {
+        properties: {
+          total: 0,
+          occupied_units: 0,
+          vacant_units: 0,
+          occupancy_rate: 0
+        },
+        contracts: {
+          active: 0,
+          expiring_soon: 0,
+          expired: 0
+        },
+        financial: {
+          monthly_revenue: 0,
+          overdue_payments: 0,
+          total_received: 0
+        }
+      }
+      
+      setSummary(mockData)
+      
+      // Descomentar quando o backend estiver pronto:
+      // const data = await ApiService.dashboard.getSummary()
+      // setSummary(data)
     } catch (err) {
       const errorMessage = handleApiError(err)
       setError(errorMessage)

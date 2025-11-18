@@ -8,6 +8,7 @@ import { Plus, Search, Grid3X3, List, Users, UserCheck, UserX, Edit, Trash2, Ref
 import { useTenants } from "@/lib/hooks/useTenants"
 import { TenantDialog } from "@/components/tenants/tenant-dialog"
 import { EmptyState } from "@/components/ui/empty-state"
+import { ApiService } from "@/lib/api"
 
 export function TenantsView() {
   const [searchTerm, setSearchTerm] = useState("")
@@ -74,12 +75,60 @@ export function TenantsView() {
     try {
       console.log("💾 Salvando inquilino:", tenantData)
       
+      // Separar dados do contrato dos dados do inquilino
+      const { contract, ...tenantOnly } = tenantData
+      
+      let savedTenant: any
+      
       if (selectedTenant) {
-        const result = await updateTenant(selectedTenant.id, tenantData)
-        console.log("✅ Inquilino atualizado:", result)
+        // Atualizar inquilino existente
+        savedTenant = await updateTenant(selectedTenant.id, tenantOnly)
+        console.log("✅ Inquilino atualizado:", savedTenant)
+        
+        // Se houver dados de contrato, criar/atualizar contrato
+        if (contract && contract.property_id && contract.title) {
+          try {
+            const contractData = {
+              ...contract,
+              tenant_id: savedTenant.id,
+              rent: parseFloat(contract.rent) || 0,
+              deposit: parseFloat(contract.deposit) || 0,
+              interest_rate: parseFloat(contract.interest_rate) || 0,
+              fine_rate: parseFloat(contract.fine_rate) || 0,
+            }
+            
+            // TODO: Verificar se já existe contrato para este inquilino e atualizar
+            const savedContract = await ApiService.contracts.createContract(contractData)
+            console.log("✅ Contrato criado:", savedContract)
+          } catch (contractError) {
+            console.error('⚠️ Erro ao salvar contrato:', contractError)
+            alert('Inquilino salvo, mas houve erro ao criar o contrato. Verifique os dados do contrato.')
+          }
+        }
       } else {
-        const result = await createTenant(tenantData)
-        console.log("✅ Inquilino criado:", result)
+        // Criar novo inquilino
+        savedTenant = await createTenant(tenantOnly)
+        console.log("✅ Inquilino criado:", savedTenant)
+        
+        // Se houver dados de contrato, criar contrato
+        if (contract && contract.property_id && contract.title) {
+          try {
+            const contractData = {
+              ...contract,
+              tenant_id: savedTenant.id,
+              rent: parseFloat(contract.rent) || 0,
+              deposit: parseFloat(contract.deposit) || 0,
+              interest_rate: parseFloat(contract.interest_rate) || 0,
+              fine_rate: parseFloat(contract.fine_rate) || 0,
+            }
+            
+            const savedContract = await ApiService.contracts.createContract(contractData)
+            console.log("✅ Contrato criado:", savedContract)
+          } catch (contractError) {
+            console.error('⚠️ Erro ao salvar contrato:', contractError)
+            alert('Inquilino salvo, mas houve erro ao criar o contrato. Verifique os dados do contrato.')
+          }
+        }
       }
       
       setShowDialog(false)
@@ -87,6 +136,7 @@ export function TenantsView() {
       await refetch()
     } catch (error) {
       console.error('❌ Erro ao salvar inquilino:', error)
+      alert('Erro ao salvar inquilino. Verifique os dados e tente novamente.')
     }
   }
 
