@@ -1,13 +1,30 @@
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios'
 import { ApiError } from '@/lib/types/api'
 
+// Get base URL based on environment
+const getBaseURL = () => {
+  // Server-side: always use absolute URL
+  if (typeof window === 'undefined') {
+    return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'
+  }
+  
+  // Client-side
+  if (process.env.NODE_ENV === 'production') {
+    // Production (Docker): use absolute URL to access backend directly
+    return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'
+  }
+  
+  // Development: use relative URL for Next.js proxy
+  return '/api/v1'
+}
+
 // Configuração base do cliente HTTP
 class ApiClient {
   private client: AxiosInstance
 
   constructor() {
     this.client = axios.create({
-      baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1',
+      baseURL: getBaseURL(),
       timeout: 10000,
       headers: {
         'Content-Type': 'application/json',

@@ -18,8 +18,11 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Upload, X, Plus, Edit, Building } from "lucide-react"
+import { Upload, X, Plus, Edit, Building, Loader2 } from "lucide-react"
 import { Property } from "@/lib/types/property"
+import { integerMask, currencyMask, currencyUnmask, areaMask, cepMask } from "@/lib/utils/masks"
+import { propertiesService } from "@/lib/api/properties"
+import { toast } from "sonner"
 
 interface Unit {
   id: string
@@ -47,11 +50,11 @@ const initialProperty: Property = {
   state: "",
   zipCode: "",
   type: "apartment",
-  area: 0,
-  bedrooms: 0,
-  bathrooms: 0,
-  parkingSpaces: 0,
-  rent: 0,
+  area: "" as any,
+  bedrooms: "" as any,
+  bathrooms: "" as any,
+  parkingSpaces: "" as any,
+  rent: "" as any,
   status: "vacant",
   description: "",
   images: [],
@@ -64,6 +67,9 @@ export function PropertyDialog({ open, onOpenChange, property, onSave }: Propert
   const [isLoading, setIsLoading] = useState(false)
   const [showUnitDialog, setShowUnitDialog] = useState(false)
   const [editingUnit, setEditingUnit] = useState<Unit | null>(null)
+  const [uploadingImages, setUploadingImages] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState(0)
+  const [dragActive, setDragActive] = useState(false)
 
   useEffect(() => {
     if (property) {
@@ -88,13 +94,101 @@ export function PropertyDialog({ open, onOpenChange, property, onSave }: Propert
     setFormData((prev) => ({ ...prev, [field]: value }))
   }
 
-  const addImage = () => {
-    const newImage = `/placeholder.svg?height=300&width=400&query=property image ${formData.images.length + 1}`
-    setFormData((prev) => ({ ...prev, images: [...prev.images, newImage] }))
+  const handleImageUpload = async (files: FileList | File[]) => {
+    if (!property?.id) {
+      toast.error("Salve o imóvel antes de adicionar imagens")
+      return
+    }
+
+    const fileArray = Array.from(files)
+    if (fileArray.length === 0) return
+
+    // Validar tipos de arquivo
+    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp']
+    const invalidFiles = fileArray.filter(f => !validTypes.includes(f.type))
+    
+    if (invalidFiles.length > 0) {
+      toast.error("Apenas imagens (JPG, PNG, GIF, WEBP) são permitidas")
+      return
+    }
+
+    // Validar tamanho (10MB por arquivo)
+    const maxSize = 10 * 1024 * 1024
+    const oversizedFiles = fileArray.filter(f => f.size > maxSize)
+    
+    if (oversizedFiles.length > 0) {
+      toast.error("Cada imagem deve ter no máximo 10MB")
+      return
+    }
+
+    setUploadingImages(true)
+    setUploadProgress(0)
+
+    try {
+      const result = await propertiesService.uploadImages(
+        property.id,
+        fileArray,
+        (progress) => setUploadProgress(progress)
+      )
+
+      // Atualizar images no formData
+      const newImages = result.uploaded_files.map(f => f.url)
+      setFormData(prev => ({
+        ...prev,
+        images: [...prev.images, ...newImages]
+      }))
+
+      toast.success(`${result.uploaded_files.length} imagem(ns) enviada(s) com sucesso!`)
+    } catch (error: any) {
+      console.error("Erro ao fazer upload:", error)
+      toast.error(error.response?.data?.detail || "Erro ao enviar imagens")
+    } finally {
+      setUploadingImages(false)
+      setUploadProgress(0)
+    }
   }
 
-  const removeImage = (index: number) => {
-    setFormData((prev) => ({ ...prev, images: prev.images.filter((_, i) => i !== index) }))
+  const handleRemoveImage = async (imageUrl: string, index: number) => {
+    if (!property?.id) {
+      // Se não tem ID, apenas remove localmente
+      setFormData((prev) => ({ ...prev, images: prev.images.filter((_, i) => i !== index) }))
+      return
+    }
+
+    try {
+      await propertiesService.deleteImage(property.id, imageUrl)
+      setFormData((prev) => ({ ...prev, images: prev.images.filter((_, i) => i !== index) }))
+      toast.success("Imagem removida com sucesso")
+    } catch (error: any) {
+      console.error("Erro ao deletar imagem:", error)
+      toast.error(error.response?.data?.detail || "Erro ao remover imagem")
+    }
+  }
+
+  const handleDrag = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (e.type === "dragenter" || e.type === "dragover") {
+      setDragActive(true)
+    } else if (e.type === "dragleave") {
+      setDragActive(false)
+    }
+  }
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setDragActive(false)
+
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      handleImageUpload(e.dataTransfer.files)
+    }
+  }
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      handleImageUpload(e.target.files)
+    }
   }
 
   const addOrUpdateUnit = (unit: Unit) => {
@@ -213,9 +307,12 @@ export function PropertyDialog({ open, onOpenChange, property, onSave }: Propert
                   <Label htmlFor="zipCode">CEP</Label>
                   <Input
                     id="zipCode"
+                    type="text"
+                    inputMode="numeric"
                     value={formData.zipCode}
-                    onChange={(e) => handleInputChange("zipCode", e.target.value)}
+                    onChange={(e) => handleInputChange("zipCode", cepMask(e.target.value))}
                     placeholder="00000-000"
+                    maxLength={9}
                     required
                   />
                 </div>
@@ -242,38 +339,50 @@ export function PropertyDialog({ open, onOpenChange, property, onSave }: Propert
                   <Label htmlFor="area">Área (m²)</Label>
                   <Input
                     id="area"
-                    type="number"
-                    value={formData.area}
-                    onChange={(e) => handleInputChange("area", Number(e.target.value))}
-                    placeholder="0"
-                    min="0"
+                    type="text"
+                    inputMode="decimal"
+                    value={formData.area || ''}
+                    onChange={(e) => {
+                      const masked = areaMask(e.target.value)
+                      handleInputChange("area", masked ? parseFloat(masked) : '')
+                    }}
+                    placeholder="Ex: 85.5"
                     required
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="rent">Valor do Aluguel (R$)</Label>
-                  <Input
-                    id="rent"
-                    type="number"
-                    value={formData.rent}
-                    onChange={(e) => handleInputChange("rent", Number(e.target.value))}
-                    placeholder="0"
-                    min="0"
-                    step="0.01"
-                    required
-                  />
+                  <Label htmlFor="rent">Valor do Aluguel</Label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-2.5 text-gray-500">R$</span>
+                    <Input
+                      id="rent"
+                      type="text"
+                      inputMode="decimal"
+                      value={formData.rent ? currencyMask(formData.rent) : ''}
+                      onChange={(e) => {
+                        const value = currencyUnmask(e.target.value)
+                        handleInputChange("rent", value)
+                      }}
+                      placeholder="0,00"
+                      className="pl-10"
+                      required
+                    />
+                  </div>
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="bedrooms">Quartos</Label>
                   <Input
                     id="bedrooms"
-                    type="number"
-                    value={formData.bedrooms}
-                    onChange={(e) => handleInputChange("bedrooms", Number(e.target.value))}
-                    placeholder="0"
-                    min="0"
+                    type="text"
+                    inputMode="numeric"
+                    value={formData.bedrooms || ''}
+                    onChange={(e) => {
+                      const masked = integerMask(e.target.value)
+                      handleInputChange("bedrooms", masked ? parseInt(masked) : '')
+                    }}
+                    placeholder="Ex: 2"
                   />
                 </div>
 
@@ -281,11 +390,14 @@ export function PropertyDialog({ open, onOpenChange, property, onSave }: Propert
                   <Label htmlFor="bathrooms">Banheiros</Label>
                   <Input
                     id="bathrooms"
-                    type="number"
-                    value={formData.bathrooms}
-                    onChange={(e) => handleInputChange("bathrooms", Number(e.target.value))}
-                    placeholder="0"
-                    min="0"
+                    type="text"
+                    inputMode="numeric"
+                    value={formData.bathrooms || ''}
+                    onChange={(e) => {
+                      const masked = integerMask(e.target.value)
+                      handleInputChange("bathrooms", masked ? parseInt(masked) : '')
+                    }}
+                    placeholder="Ex: 1"
                     required
                   />
                 </div>
@@ -294,11 +406,14 @@ export function PropertyDialog({ open, onOpenChange, property, onSave }: Propert
                   <Label htmlFor="parkingSpaces">Vagas de Garagem</Label>
                   <Input
                     id="parkingSpaces"
-                    type="number"
-                    value={formData.parkingSpaces}
-                    onChange={(e) => handleInputChange("parkingSpaces", Number(e.target.value))}
-                    placeholder="0"
-                    min="0"
+                    type="text"
+                    inputMode="numeric"
+                    value={formData.parkingSpaces || ''}
+                    onChange={(e) => {
+                      const masked = integerMask(e.target.value)
+                      handleInputChange("parkingSpaces", masked ? parseInt(masked) : '')
+                    }}
+                    placeholder="Ex: 1"
                   />
                 </div>
               </div>
@@ -398,41 +513,96 @@ export function PropertyDialog({ open, onOpenChange, property, onSave }: Propert
               <Card>
                 <CardHeader>
                   <CardTitle>Fotos do Imóvel</CardTitle>
-                  <CardDescription>Adicione fotos para destacar seu imóvel</CardDescription>
+                  <CardDescription>
+                    {property?.id 
+                      ? "Adicione fotos para destacar seu imóvel" 
+                      : "Salve o imóvel primeiro para adicionar fotos"}
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid gap-4 md:grid-cols-3">
-                    {formData.images.map((image, index) => (
-                      <div key={index} className="relative group">
-                        <img
-                          src={image || "/placeholder.svg"}
-                          alt={`Foto ${index + 1}`}
-                          className="w-full h-32 object-cover rounded-lg"
+                  {!property?.id ? (
+                    <div className="flex justify-center p-8 bg-gray-50 rounded-lg border-2 border-dashed">
+                      <div className="text-center">
+                        <Upload className="mx-auto h-8 w-8 text-gray-400 mb-2" />
+                        <p className="text-sm text-gray-500">Salve o imóvel primeiro para adicionar fotos</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      {/* Área de Upload */}
+                      <div
+                        onDragEnter={handleDrag}
+                        onDragLeave={handleDrag}
+                        onDragOver={handleDrag}
+                        onDrop={handleDrop}
+                        className={`relative border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
+                          dragActive ? 'border-primary bg-primary/5' : 'border-gray-300'
+                        }`}
+                      >
+                        <input
+                          type="file"
+                          id="property-images"
+                          multiple
+                          accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+                          onChange={handleFileSelect}
+                          className="hidden"
+                          disabled={uploadingImages}
                         />
-                        <Button
-                          type="button"
-                          variant="destructive"
-                          size="sm"
-                          className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
-                          onClick={() => removeImage(index)}
+                        <label
+                          htmlFor="property-images"
+                          className="cursor-pointer flex flex-col items-center"
                         >
-                          <X className="h-3 w-3" />
-                        </Button>
+                          {uploadingImages ? (
+                            <>
+                              <Loader2 className="h-8 w-8 text-primary mb-2 animate-spin" />
+                              <p className="text-sm text-gray-600 mb-1">Enviando imagens...</p>
+                              <div className="w-full max-w-xs bg-gray-200 rounded-full h-2 mt-2">
+                                <div
+                                  className="bg-primary h-2 rounded-full transition-all"
+                                  style={{ width: `${uploadProgress}%` }}
+                                />
+                              </div>
+                              <p className="text-xs text-gray-500 mt-1">{uploadProgress}%</p>
+                            </>
+                          ) : (
+                            <>
+                              <Upload className="h-8 w-8 text-gray-400 mb-2" />
+                              <p className="text-sm text-gray-600 mb-1">
+                                Arraste imagens aqui ou clique para selecionar
+                              </p>
+                              <p className="text-xs text-gray-500">
+                                JPG, PNG, GIF, WEBP (máx. 10MB cada, até 10 imagens)
+                              </p>
+                            </>
+                          )}
+                        </label>
                       </div>
-                    ))}
 
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="h-32 border-dashed bg-transparent"
-                      onClick={addImage}
-                    >
-                      <div className="flex flex-col items-center">
-                        <Upload className="h-6 w-6 mb-2" />
-                        <span className="text-sm">Adicionar Foto</span>
-                      </div>
-                    </Button>
-                  </div>
+                      {/* Grid de Imagens */}
+                      {formData.images.length > 0 && (
+                        <div className="grid gap-4 md:grid-cols-3 mt-4">
+                          {formData.images.map((image, index) => (
+                            <div key={index} className="relative group">
+                              <img
+                                src={image || "/placeholder.svg"}
+                                alt={`Foto ${index + 1}`}
+                                className="w-full h-32 object-cover rounded-lg"
+                              />
+                              <Button
+                                type="button"
+                                variant="destructive"
+                                size="sm"
+                                className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                                onClick={() => handleRemoveImage(image, index)}
+                              >
+                                <X className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>

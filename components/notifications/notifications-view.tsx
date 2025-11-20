@@ -88,12 +88,8 @@ export function NotificationsView() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Notificações</h1>
-          <p className="text-gray-600">Acompanhe alertas e lembretes importantes</p>
-        </div>
+      {/* Action Button */}
+      <div className="flex justify-end">
         <Button onClick={handleMarkAllAsRead} variant="outline">
           <CheckCircle className="mr-2 h-4 w-4" />
           Marcar Todas como Lidas

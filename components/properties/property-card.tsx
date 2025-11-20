@@ -1,16 +1,18 @@
 "use client"
 
+import { useState } from "react"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { MapPin, Bed, Bath, Car, MoreHorizontal, Edit, Trash2, Eye } from "lucide-react"
+import { MapPin, Bed, Bath, Car, Edit, Trash2, ChevronLeft, ChevronRight } from "lucide-react"
 import Image from "next/image"
 import { Property } from "@/lib/types/property"
+import { PropertyDetailDialog } from "./property-detail-dialog"
 
 interface PropertyCardProps {
   property: Property
   onEdit: (property: Property) => void
+  onDelete: (id: number) => void
 }
 
 const statusConfig = {
@@ -25,33 +27,102 @@ const typeConfig = {
   commercial: "Comercial",
 }
 
-export function PropertyCard({ property, onEdit }: PropertyCardProps) {
+export function PropertyCard({ property, onEdit, onDelete }: PropertyCardProps) {
+  const [currentImageIndex, setCurrentImageIndex] = useState(0)
+  const [showDetailDialog, setShowDetailDialog] = useState(false)
+  
+  // Construir URLs completas das imagens
+  const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+  const images = property.images && property.images.length > 0 
+    ? property.images.map(img => `${baseUrl}${img}`)
+    : ["/placeholder.svg"]
+
+  const handleDelete = () => {
+    if (confirm(`Tem certeza que deseja excluir o imóvel "${property.name}"?`)) {
+      onDelete(property.id)
+    }
+  }
+
+  const handlePreviousImage = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    setCurrentImageIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1))
+  }
+
+  const handleNextImage = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    setCurrentImageIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1))
+  }
+
   return (
-    <Card className="overflow-hidden hover:shadow-lg transition-shadow">
-      <div className="relative h-48">
-        <Image src={property.images?.[0] || "/placeholder.svg"} alt={property.name} fill className="object-cover" />
-        <div className="absolute top-2 right-2">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="secondary" size="sm" className="h-8 w-8 p-0">
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => onEdit(property)}>
-                <Edit className="mr-2 h-4 w-4" />
-                Editar
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <Eye className="mr-2 h-4 w-4" />
-                Visualizar
-              </DropdownMenuItem>
-              <DropdownMenuItem className="text-red-600">
-                <Trash2 className="mr-2 h-4 w-4" />
-                Excluir
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+    <>
+      <Card className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer" onClick={() => setShowDetailDialog(true)}>
+        <div className="relative h-48 group">
+        <Image 
+          src={images[currentImageIndex]} 
+          alt={property.name} 
+          fill 
+          className="object-cover" 
+        />
+        
+        {/* Navigation Arrows */}
+        {images.length > 1 && (
+          <>
+            <Button
+              variant="secondary"
+              size="sm"
+              className="absolute left-2 top-1/2 -translate-y-1/2 h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+              onClick={handlePreviousImage}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+              onClick={handleNextImage}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+            
+            {/* Image Indicators */}
+            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1">
+              {images.map((_, index) => (
+                <div
+                  key={index}
+                  className={`h-1.5 rounded-full transition-all ${
+                    index === currentImageIndex 
+                      ? 'w-4 bg-white' 
+                      : 'w-1.5 bg-white/50'
+                  }`}
+                />
+              ))}
+            </div>
+          </>
+        )}
+
+        <div className="absolute top-2 right-2 flex gap-2">
+          <Button 
+            variant="secondary" 
+            size="sm" 
+            className="h-8 w-8 p-0"
+            onClick={(e) => {
+              e.stopPropagation()
+              onEdit(property)
+            }}
+          >
+            <Edit className="h-4 w-4" />
+          </Button>
+          <Button 
+            variant="destructive" 
+            size="sm" 
+            className="h-8 w-8 p-0"
+            onClick={(e) => {
+              e.stopPropagation()
+              handleDelete()
+            }}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
         </div>
         <div className="absolute top-2 left-2">
           <Badge variant="secondary" className={statusConfig[property.status as keyof typeof statusConfig].className}>
@@ -117,5 +188,14 @@ export function PropertyCard({ property, onEdit }: PropertyCardProps) {
         </div>
       </CardContent>
     </Card>
+    
+    <PropertyDetailDialog
+      open={showDetailDialog}
+      onOpenChange={setShowDetailDialog}
+      property={property}
+      onEdit={onEdit}
+      onDelete={onDelete}
+    />
+    </>
   )
 }

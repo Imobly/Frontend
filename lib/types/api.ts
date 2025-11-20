@@ -53,8 +53,11 @@ export interface EmergencyContact {
 export interface TenantDocument {
   id?: string;
   name: string;
-  type: 'identity' | 'contract' | 'other';
+  type: 'rg' | 'cpf' | 'cnh' | 'comprovante_residencia' | 'comprovante_renda' | 'contrato' | 'outros';
   url?: string;
+  file_type?: string;
+  size?: number;
+  uploaded_at?: string;
 }
 
 export interface TenantBase {
@@ -166,6 +169,16 @@ export interface BulkPaymentConfirm {
 }
 
 // DESPESAS
+export interface ExpenseDocument {
+  id?: string;
+  name: string;
+  type: 'comprovante' | 'nota_fiscal' | 'recibo' | 'outros';
+  url: string;
+  file_type?: string;
+  size?: number;
+  uploaded_at?: string;
+}
+
 export interface ExpenseBase {
   type: 'expense' | 'maintenance';
   category: string;
@@ -176,8 +189,9 @@ export interface ExpenseBase {
   status: 'pending' | 'paid' | 'scheduled';
   priority?: 'low' | 'medium' | 'high' | 'urgent';
   vendor?: string;
+  number?: string;
   receipt?: string;
-  notes?: string;
+  documents?: ExpenseDocument[];
 }
 
 export interface ExpenseCreate extends ExpenseBase {}

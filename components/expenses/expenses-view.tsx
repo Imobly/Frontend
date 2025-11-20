@@ -109,12 +109,8 @@ export function ExpensesView() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Despesas</h1>
-          <p className="text-gray-600">Gerencie despesas e manutenções</p>
-        </div>
+      {/* Action Button */}
+      <div className="flex justify-end">
         <Button onClick={handleAdd} className="bg-blue-600 hover:bg-blue-700">
           <Plus className="mr-2 h-4 w-4" />
           Nova Despesa
@@ -279,8 +275,8 @@ export function ExpensesView() {
                     {expense.vendor && (
                       <p className="text-sm text-gray-600">Fornecedor: {expense.vendor}</p>
                     )}
-                    {expense.notes && (
-                      <p className="text-sm text-gray-600">Observações: {expense.notes}</p>
+                    {expense.number && (
+                      <p className="text-sm text-gray-600">Contato: {expense.number}</p>
                     )}
                   </div>
                 </div>

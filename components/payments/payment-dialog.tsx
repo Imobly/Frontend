@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect } from "react"
+import { useState, useEffect } from "react"
 import {
   Dialog,
   DialogContent,
@@ -16,9 +16,9 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Calculator, AlertCircle } from "lucide-react"
+import { currencyMask, currencyUnmask } from "@/lib/utils/masks"
 import { useProperties } from "@/lib/hooks/useProperties"
 import { useTenants } from "@/lib/hooks/useTenants"
-import { useContracts } from "@/lib/hooks/useContracts"
 import { PaymentCreate } from "@/lib/types/api"
 
 interface PaymentFormData {
@@ -68,7 +68,6 @@ export function PaymentDialog({ open, onOpenChange, payment, onSave }: PaymentDi
   
   const { properties } = useProperties()
   const { tenants } = useTenants()
-  const { contracts } = useContracts()
 
   useEffect(() => {
     if (payment) {
@@ -135,9 +134,6 @@ export function PaymentDialog({ open, onOpenChange, payment, onSave }: PaymentDi
     }
     if (!formData.tenant_id || formData.tenant_id === 0) {
       errors.tenant_id = "Selecione um inquilino"
-    }
-    if (!formData.contract_id || formData.contract_id === 0) {
-      errors.contract_id = "Informe o ID do contrato"
     }
     if (!formData.due_date) {
       errors.due_date = "Data de vencimento é obrigatória"
@@ -236,7 +232,7 @@ export function PaymentDialog({ open, onOpenChange, payment, onSave }: PaymentDi
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Associações */}
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-6 md:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="property_id">Imóvel *</Label>
               <Select 
@@ -244,7 +240,7 @@ export function PaymentDialog({ open, onOpenChange, payment, onSave }: PaymentDi
                 onValueChange={(value) => handleInputChange("property_id", parseInt(value) || 0)}
               >
                 <SelectTrigger className={validationErrors.property_id ? "border-red-500" : ""}>
-                  <SelectValue placeholder="Selecione um imóvel" />
+                  <SelectValue placeholder="Selecione um imóvel" className="truncate" />
                 </SelectTrigger>
                 <SelectContent>
                   {properties.map((property) => (
@@ -269,7 +265,7 @@ export function PaymentDialog({ open, onOpenChange, payment, onSave }: PaymentDi
                 onValueChange={(value) => handleInputChange("tenant_id", parseInt(value) || 0)}
               >
                 <SelectTrigger className={validationErrors.tenant_id ? "border-red-500" : ""}>
-                  <SelectValue placeholder="Selecione um inquilino" />
+                  <SelectValue placeholder="Selecione um inquilino" className="truncate" />
                 </SelectTrigger>
                 <SelectContent>
                   {tenants.map((tenant) => (
@@ -286,53 +282,15 @@ export function PaymentDialog({ open, onOpenChange, payment, onSave }: PaymentDi
                 </p>
               )}
             </div>
+          </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="contract_id">Contrato</Label>
-              <Select 
-                value={formData.contract_id === 0 ? "" : formData.contract_id.toString()} 
-                onValueChange={(value) => handleInputChange("contract_id", parseInt(value) || 0)}
-              >
-                <SelectTrigger className={validationErrors.contract_id ? "border-red-500" : ""}>
-                  <SelectValue placeholder="Selecione um contrato" />
-                </SelectTrigger>
-                <SelectContent>
-                  {contracts
-                    .filter(contract => 
-                      (formData.property_id === 0 || contract.property_id === formData.property_id) &&
-                      (formData.tenant_id === 0 || contract.tenant_id === formData.tenant_id) &&
-                      contract.status === "active"
-                    )
-                    .map((contract) => (
-                    <SelectItem key={contract.id} value={contract.id.toString()}>
-                      #{contract.id} - {contract.title}
-                    </SelectItem>
-                  ))}
-                  {contracts.filter(contract => 
-                    (formData.property_id === 0 || contract.property_id === formData.property_id) &&
-                    (formData.tenant_id === 0 || contract.tenant_id === formData.tenant_id) &&
-                    contract.status === "active"
-                  ).length === 0 && (
-                    <SelectItem value="no-contracts" disabled>
-                      Nenhum contrato disponível
-                    </SelectItem>
-                  )}
-                </SelectContent>
-              </Select>
-              {validationErrors.contract_id && (
-                <p className="text-sm text-red-500 flex items-center">
-                  <AlertCircle className="h-3 w-3 mr-1" />
-                  {validationErrors.contract_id}
-                </p>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="status">Status *</Label>
-              <Select 
-                value={formData.status} 
-                onValueChange={(value) => handleInputChange("status", value)}
-              >
+          {/* Status */}
+          <div className="space-y-2">
+            <Label htmlFor="status">Status *</Label>
+            <Select 
+              value={formData.status} 
+              onValueChange={(value) => handleInputChange("status", value)}
+            >
                 <SelectTrigger className={validationErrors.status ? "border-red-500" : ""}>
                   <SelectValue />
                 </SelectTrigger>
@@ -341,15 +299,14 @@ export function PaymentDialog({ open, onOpenChange, payment, onSave }: PaymentDi
                   <SelectItem value="paid">Pago</SelectItem>
                   <SelectItem value="overdue">Atrasado</SelectItem>
                   <SelectItem value="partial">Pagamento Parcial</SelectItem>
-                </SelectContent>
-              </Select>
-              {validationErrors.status && (
-                <p className="text-sm text-red-500 flex items-center">
-                  <AlertCircle className="h-3 w-3 mr-1" />
-                  {validationErrors.status}
-                </p>
-              )}
-            </div>
+            </SelectContent>
+            </Select>
+            {validationErrors.status && (
+              <p className="text-sm text-red-500 flex items-center">
+                <AlertCircle className="h-3 w-3 mr-1" />
+                {validationErrors.status}
+              </p>
+            )}
           </div>
 
           {/* Datas e Valores */}
@@ -373,18 +330,23 @@ export function PaymentDialog({ open, onOpenChange, payment, onSave }: PaymentDi
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="amount">Valor (R$) *</Label>
-              <Input
-                id="amount"
-                type="number"
-                value={formData.amount}
-                onChange={(e) => handleInputChange("amount", Number(e.target.value))}
-                placeholder="0.00"
-                min="0"
-                step="0.01"
-                className={validationErrors.amount ? "border-red-500" : ""}
-                required
-              />
+              <Label htmlFor="amount">Valor *</Label>
+              <div className="relative">
+                <span className="absolute left-3 top-2.5 text-gray-500">R$</span>
+                <Input
+                  id="amount"
+                  type="text"
+                  inputMode="decimal"
+                  value={formData.amount ? currencyMask(formData.amount) : ""}
+                  onChange={(e) => {
+                    const value = currencyUnmask(e.target.value)
+                    handleInputChange("amount", value)
+                  }}
+                  placeholder="0,00"
+                  className={validationErrors.amount ? "border-red-500 pl-10" : "pl-10"}
+                  required
+                />
+              </div>
               {validationErrors.amount && (
                 <p className="text-sm text-red-500 flex items-center">
                   <AlertCircle className="h-3 w-3 mr-1" />

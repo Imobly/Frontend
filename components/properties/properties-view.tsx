@@ -167,8 +167,8 @@ export function PropertiesView() {
         </Card>
         <Card className="p-4">
           <div className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center">
-              <div className="w-3 h-3 bg-yellow-600 rounded-full"></div>
+            <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
+              <div className="w-3 h-3 bg-gray-600 rounded-full"></div>
             </div>
             <div>
               <p className="text-xs text-gray-600">Vagos</p>
@@ -178,8 +178,8 @@ export function PropertiesView() {
         </Card>
         <Card className="p-4">
           <div className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center">
-              <div className="w-3 h-3 bg-red-600 rounded-full"></div>
+            <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center">
+              <div className="w-3 h-3 bg-orange-600 rounded-full"></div>
             </div>
             <div>
               <p className="text-xs text-gray-600">Manutenção</p>
@@ -265,6 +265,7 @@ export function PropertiesView() {
               key={property.id}
               property={property}
               onEdit={handleEdit}
+              onDelete={handleDelete}
             />
           ))}
         </div>
