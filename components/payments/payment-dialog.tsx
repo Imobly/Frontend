@@ -17,9 +17,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Calculator, AlertCircle } from "lucide-react"
 import { currencyMask, currencyUnmask } from "@/lib/utils/masks"
-import { useProperties } from "@/lib/hooks/useProperties"
-import { useTenants } from "@/lib/hooks/useTenants"
-import { PaymentCreate } from "@/lib/types/api"
+import { useContracts } from "@/lib/hooks/useContracts"
+import { contractsService } from "@/lib/api/contracts"
+import { PaymentCreate, ContractResponse } from "@/lib/types/api"
 
 interface PaymentFormData {
   property_id: number
@@ -65,9 +65,9 @@ export function PaymentDialog({ open, onOpenChange, payment, onSave }: PaymentDi
   const [formData, setFormData] = useState<PaymentFormData>(initialPayment)
   const [isLoading, setIsLoading] = useState(false)
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
+  const [selectedContract, setSelectedContract] = useState<ContractResponse | null>(null)
   
-  const { properties } = useProperties()
-  const { tenants } = useTenants()
+  const { contracts } = useContracts()
 
   useEffect(() => {
     if (payment) {
@@ -125,15 +125,33 @@ export function PaymentDialog({ open, onOpenChange, payment, onSave }: PaymentDi
     }
   }, [formData.due_date, formData.amount, formData.status])
 
+  // Carregar dados do contrato selecionado
+  const handleContractChange = async (contractId: string) => {
+    const id = parseInt(contractId)
+    if (!id) return
+
+    try {
+      const contract = await contractsService.getContract(id)
+      setSelectedContract(contract)
+      
+      setFormData(prev => ({
+        ...prev,
+        contract_id: contract.id,
+        property_id: contract.property_id,
+        tenant_id: contract.tenant_id,
+        amount: contract.rent,
+      }))
+    } catch (error) {
+      console.error('Erro ao carregar contrato:', error)
+    }
+  }
+
   // Validação do formulário
   const validateForm = (): boolean => {
     const errors: Record<string, string> = {}
 
-    if (!formData.property_id || formData.property_id === 0) {
-      errors.property_id = "Selecione um imóvel"
-    }
-    if (!formData.tenant_id || formData.tenant_id === 0) {
-      errors.tenant_id = "Selecione um inquilino"
+    if (!formData.contract_id || formData.contract_id === 0) {
+      errors.contract_id = "Selecione um contrato"
     }
     if (!formData.due_date) {
       errors.due_date = "Data de vencimento é obrigatória"
@@ -231,58 +249,60 @@ export function PaymentDialog({ open, onOpenChange, payment, onSave }: PaymentDi
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Associações */}
-          <div className="grid gap-6 md:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="property_id">Imóvel *</Label>
-              <Select 
-                value={formData.property_id === 0 ? "" : formData.property_id.toString()} 
-                onValueChange={(value) => handleInputChange("property_id", parseInt(value) || 0)}
-              >
-                <SelectTrigger className={validationErrors.property_id ? "border-red-500" : ""}>
-                  <SelectValue placeholder="Selecione um imóvel" className="truncate" />
-                </SelectTrigger>
-                <SelectContent>
-                  {properties.map((property) => (
-                    <SelectItem key={property.id} value={property.id.toString()}>
-                      {property.name} - {property.address}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {validationErrors.property_id && (
-                <p className="text-sm text-red-500 flex items-center">
-                  <AlertCircle className="h-3 w-3 mr-1" />
-                  {validationErrors.property_id}
-                </p>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="tenant_id">Inquilino *</Label>
-              <Select 
-                value={formData.tenant_id === 0 ? "" : formData.tenant_id.toString()} 
-                onValueChange={(value) => handleInputChange("tenant_id", parseInt(value) || 0)}
-              >
-                <SelectTrigger className={validationErrors.tenant_id ? "border-red-500" : ""}>
-                  <SelectValue placeholder="Selecione um inquilino" className="truncate" />
-                </SelectTrigger>
-                <SelectContent>
-                  {tenants.map((tenant) => (
-                    <SelectItem key={tenant.id} value={tenant.id.toString()}>
-                      {tenant.name} - {tenant.email}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {validationErrors.tenant_id && (
-                <p className="text-sm text-red-500 flex items-center">
-                  <AlertCircle className="h-3 w-3 mr-1" />
-                  {validationErrors.tenant_id}
-                </p>
-              )}
-            </div>
+          {/* Seleção de Contrato */}
+          <div className="space-y-2">
+            <Label htmlFor="contract_id">Contrato *</Label>
+            <Select 
+              value={formData.contract_id === 0 ? "" : formData.contract_id.toString()} 
+              onValueChange={handleContractChange}
+            >
+              <SelectTrigger className={validationErrors.contract_id ? "border-red-500" : ""}>
+                <SelectValue placeholder="Selecione um contrato" />
+              </SelectTrigger>
+              <SelectContent>
+                {contracts.filter(c => c.status === 'active').map((contract) => (
+                  <SelectItem key={contract.id} value={contract.id.toString()}>
+                    {contract.title} - R$ {contract.rent.toLocaleString('pt-BR')}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {validationErrors.contract_id && (
+              <p className="text-sm text-red-500 flex items-center">
+                <AlertCircle className="h-3 w-3 mr-1" />
+                {validationErrors.contract_id}
+              </p>
+            )}
           </div>
+
+          {/* Dados Preenchidos Automaticamente */}
+          {selectedContract && (
+            <Card className="bg-gray-50">
+              <CardHeader>
+                <CardTitle className="text-sm">Informações do Contrato</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Imóvel:</span>
+                  <span className="font-medium">ID #{selectedContract.property_id}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Inquilino:</span>
+                  <span className="font-medium">ID #{selectedContract.tenant_id}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Valor do Aluguel:</span>
+                  <span className="font-medium">R$ {selectedContract.rent.toLocaleString('pt-BR')}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Vigência:</span>
+                  <span className="font-medium">
+                    {new Date(selectedContract.start_date).toLocaleDateString('pt-BR')} até {new Date(selectedContract.end_date).toLocaleDateString('pt-BR')}
+                  </span>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Status */}
           <div className="space-y-2">

@@ -70,6 +70,7 @@ export interface TenantBase {
   emergency_contact?: EmergencyContact;
   documents?: TenantDocument[];
   status: 'active' | 'inactive';
+  contract_id?: number;
 }
 
 export interface TenantCreate extends TenantBase {}
@@ -118,7 +119,6 @@ export interface ContractBase {
   interest_rate: number;
   fine_rate: number;
   status: 'active' | 'expired' | 'terminated';
-  document_url?: string;
 }
 
 export interface ContractCreate extends ContractBase {}

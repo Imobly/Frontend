@@ -43,7 +43,7 @@ export function PropertyDetailDialog({
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
   
   // Construir URLs completas das imagens
-  const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+  const baseUrl = process.env.NEXT_PUBLIC_API_URL?.replace('/api/v1', '') || 'http://localhost:8000'
   const images = property.images && property.images.length > 0 
     ? property.images.map(img => img.startsWith('http') ? img : `${baseUrl}${img}`)
     : ["/placeholder.svg"]

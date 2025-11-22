@@ -39,6 +39,7 @@ interface TenantFormData {
     type: 'rg' | 'cpf' | 'cnh' | 'comprovante_residencia' | 'comprovante_renda' | 'contrato' | 'outros'
     url: string
   }[]
+  contract_id?: number
   contract?: {
     title: string
     property_id: number | null
@@ -49,7 +50,6 @@ interface TenantFormData {
     interest_rate: string
     fine_rate: string
     status: 'active' | 'expired' | 'terminated'
-    document_url: string
   }
   status: 'active' | 'inactive'
 }
@@ -74,6 +74,7 @@ const initialTenant: TenantFormData = {
     relationship: "",
   },
   documents: [],
+  contract_id: undefined,
   contract: {
     title: "",
     property_id: null,
@@ -81,10 +82,9 @@ const initialTenant: TenantFormData = {
     end_date: "",
     rent: "",
     deposit: "",
-    interest_rate: "0",
-    fine_rate: "0",
+    interest_rate: "",
+    fine_rate: "",
     status: "active",
-    document_url: "",
   },
   status: "active",
 }
@@ -109,8 +109,8 @@ export function TenantDialog({ open, onOpenChange, tenant, onSave }: TenantDialo
   const loadProperties = async () => {
     setLoadingProperties(true)
     try {
-      const response = await apiClient.get('/properties')
-      setProperties(response.data || [])
+      const response = await apiClient.get('/properties/')
+      setProperties(response || [])
     } catch (error) {
       console.error('Erro ao carregar propriedades:', error)
       setProperties([])
@@ -121,33 +121,82 @@ export function TenantDialog({ open, onOpenChange, tenant, onSave }: TenantDialo
 
   useEffect(() => {
     if (tenant) {
-      setFormData({
-        name: tenant.name || "",
-        email: tenant.email || "",
-        phone: tenant.phone || "",
-        cpf_cnpj: tenant.cpf_cnpj || "",
-        birth_date: tenant.birth_date || null,
-        profession: tenant.profession || "",
-        emergency_contact: tenant.emergency_contact || {
-          name: "",
-          phone: "",
-          relationship: "",
-        },
-        documents: tenant.documents || [],
-        contract: tenant.contract || {
-          title: "",
-          property_id: null,
-          start_date: "",
-          end_date: "",
-          rent: "",
-          deposit: "",
-          interest_rate: "0",
-          fine_rate: "0",
-          status: "active",
-          document_url: "",
-        },
-        status: tenant.status || "active",
-      })
+      // Função para carregar contrato se contract_id existir
+      const loadContractData = async () => {
+        if (tenant.contract_id) {
+          try {
+            const contract = await apiClient.get(`/contracts/${tenant.contract_id}/`)
+            setFormData({
+              name: tenant.name || "",
+              email: tenant.email || "",
+              phone: tenant.phone || "",
+              cpf_cnpj: tenant.cpf_cnpj || "",
+              birth_date: tenant.birth_date || null,
+              profession: tenant.profession || "",
+              emergency_contact: tenant.emergency_contact || {
+                name: "",
+                phone: "",
+                relationship: "",
+              },
+              documents: tenant.documents || [],
+              contract_id: tenant.contract_id,
+              contract: {
+                title: contract.title || "",
+                property_id: contract.property_id || null,
+                start_date: contract.start_date || "",
+                end_date: contract.end_date || "",
+                rent: contract.rent?.toString() || "",
+                deposit: contract.deposit?.toString() || "",
+                interest_rate: contract.interest_rate?.toString() || "",
+                fine_rate: contract.fine_rate?.toString() || "",
+                status: contract.status || "active",
+              },
+              status: tenant.status || "active",
+            })
+          } catch (error) {
+            console.error("Erro ao carregar contrato:", error)
+            // Se falhar, carregar sem contrato
+            setFormData({
+              name: tenant.name || "",
+              email: tenant.email || "",
+              phone: tenant.phone || "",
+              cpf_cnpj: tenant.cpf_cnpj || "",
+              birth_date: tenant.birth_date || null,
+              profession: tenant.profession || "",
+              emergency_contact: tenant.emergency_contact || {
+                name: "",
+                phone: "",
+                relationship: "",
+              },
+              documents: tenant.documents || [],
+              contract_id: tenant.contract_id,
+              contract: initialTenant.contract,
+              status: tenant.status || "active",
+            })
+          }
+        } else {
+          // Sem contract_id
+          setFormData({
+            name: tenant.name || "",
+            email: tenant.email || "",
+            phone: tenant.phone || "",
+            cpf_cnpj: tenant.cpf_cnpj || "",
+            birth_date: tenant.birth_date || null,
+            profession: tenant.profession || "",
+            emergency_contact: tenant.emergency_contact || {
+              name: "",
+              phone: "",
+              relationship: "",
+            },
+            documents: tenant.documents || [],
+            contract_id: undefined,
+            contract: initialTenant.contract,
+            status: tenant.status || "active",
+          })
+        }
+      }
+      
+      loadContractData()
     } else {
       setFormData(initialTenant)
     }
@@ -521,7 +570,7 @@ export function TenantDialog({ open, onOpenChange, tenant, onSave }: TenantDialo
                         <SelectContent>
                           {properties.map((property) => (
                             <SelectItem key={property.id} value={property.id.toString()}>
-                              {property.title} - {property.address}
+                              {property.name} - {property.address}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -556,10 +605,17 @@ export function TenantDialog({ open, onOpenChange, tenant, onSave }: TenantDialo
                           id="contract_rent"
                           type="text"
                           inputMode="decimal"
-                          value={formData.contract?.rent ? currencyMask(formData.contract.rent) : ""}
+                          value={formData.contract?.rent || ""}
                           onChange={(e) => {
-                            const value = currencyUnmask(e.target.value)
-                            handleNestedChange("contract", "rent", value.toString())
+                            const value = e.target.value.replace(/[^\d,]/g, '')
+                            handleNestedChange("contract", "rent", value)
+                          }}
+                          onBlur={(e) => {
+                            // Formatar ao sair do campo
+                            if (e.target.value) {
+                              const unmasked = currencyUnmask(e.target.value)
+                              handleNestedChange("contract", "rent", currencyMask(unmasked))
+                            }
                           }}
                           placeholder="0,00"
                           className="pl-10"
@@ -575,10 +631,17 @@ export function TenantDialog({ open, onOpenChange, tenant, onSave }: TenantDialo
                           id="contract_deposit"
                           type="text"
                           inputMode="decimal"
-                          value={formData.contract?.deposit ? currencyMask(formData.contract.deposit) : ""}
+                          value={formData.contract?.deposit || ""}
                           onChange={(e) => {
-                            const value = currencyUnmask(e.target.value)
-                            handleNestedChange("contract", "deposit", value.toString())
+                            const value = e.target.value.replace(/[^\d,]/g, '')
+                            handleNestedChange("contract", "deposit", value)
+                          }}
+                          onBlur={(e) => {
+                            // Formatar ao sair do campo
+                            if (e.target.value) {
+                              const unmasked = currencyUnmask(e.target.value)
+                              handleNestedChange("contract", "deposit", currencyMask(unmasked))
+                            }
                           }}
                           placeholder="0,00"
                           className="pl-10"
@@ -631,17 +694,6 @@ export function TenantDialog({ open, onOpenChange, tenant, onSave }: TenantDialo
                           <SelectItem value="terminated">Rescindido</SelectItem>
                         </SelectContent>
                       </Select>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="contract_document_url">URL do Documento (opcional)</Label>
-                      <Input
-                        id="contract_document_url"
-                        type="url"
-                        value={formData.contract?.document_url || ""}
-                        onChange={(e) => handleNestedChange("contract", "document_url", e.target.value)}
-                        placeholder="https://..."
-                      />
                     </div>
                   </div>
                 </CardContent>
