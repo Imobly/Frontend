@@ -43,7 +43,45 @@ export class NotificationsService {
 
   // Obter quantidade de notificações não lidas
   async getUnreadCount(): Promise<NotificationCount> {
-    return apiClient.get<NotificationCount>(`${this.endpoint}/unread/count/`)
+    return apiClient.get<NotificationCount>(`${this.endpoint}/count/unread/`)
+  }
+
+  // Obter apenas notificações não lidas
+  async getUnreadNotifications(): Promise<NotificationResponse[]> {
+    return apiClient.get<NotificationResponse[]>(`${this.endpoint}/unread/`)
+  }
+
+  // Marcar notificação como lida
+  async markAsRead(id: string): Promise<NotificationResponse> {
+    return apiClient.put<NotificationResponse>(`${this.endpoint}/${id}/read/`)
+  }
+
+  // Marcar todas as notificações como lidas
+  async markAllAsRead(): Promise<{ marked_as_read: number }> {
+    return apiClient.put<{ marked_as_read: number }>(`${this.endpoint}/mark-all-read/`)
+  }
+
+  // Processar tarefas de background (atualizar status, gerar notificações)
+  async processBackgroundTasks(): Promise<{
+    payment_status_changes: {
+      pending_to_overdue: number;
+      total_overdue: number;
+      total_pending: number;
+      total_paid: number;
+      total_partial: number;
+    };
+    contract_notifications: number;
+    payment_reminders: number;
+    overdue_notifications: number;
+  }> {
+    return apiClient.post(`${this.endpoint}/process-background-tasks/`)
+  }
+
+  // Limpar notificações antigas
+  async cleanupOldNotifications(days: number = 30): Promise<{ message: string; deleted_count: number }> {
+    return apiClient.delete<{ message: string; deleted_count: number }>(
+      `${this.endpoint}/cleanup/?days=${days}`
+    )
   }
 }
 

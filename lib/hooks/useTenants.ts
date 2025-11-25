@@ -22,7 +22,49 @@ export function useTenants(filters?: TenantFilters): UseTenantsReturn {
       setLoading(true)
       setError(null)
       const data = await ApiService.tenants.getTenants(filters)
-      setTenants(data)
+      
+      // Enriquecer dados com informações de contrato e imóvel
+      const enrichedTenants = await Promise.all(
+        data.map(async (tenant) => {
+          try {
+            // Se tem contract_id, buscar dados do contrato
+            if (tenant.contract_id) {
+              const contract = await ApiService.contracts.getContract(tenant.contract_id)
+              
+              // Buscar dados do imóvel
+              let propertyData: any = null
+              if (contract.property_id) {
+                try {
+                  propertyData = await ApiService.properties.getProperty(contract.property_id)
+                } catch (propErr) {
+                  console.warn(`Não foi possível carregar imóvel ${contract.property_id}`)
+                }
+              }
+              
+              // Calcular dia de vencimento
+              const startDate = new Date(contract.start_date)
+              const dueDay = startDate.getDate()
+              
+              return {
+                ...tenant,
+                property_name: propertyData?.name,
+                property_address: propertyData?.address,
+                rent: parseFloat(contract.rent.toString()),
+                due_day: dueDay,
+                contract_start: contract.start_date,
+                contract_end: contract.end_date,
+              }
+            }
+            
+            return tenant
+          } catch (err) {
+            console.warn(`Erro ao enriquecer tenant ${tenant.id}:`, err)
+            return tenant
+          }
+        })
+      )
+      
+      setTenants(enrichedTenants as any)
     } catch (err) {
       const errorMessage = handleApiError(err)
       setError(errorMessage)

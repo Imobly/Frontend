@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Plus, Search, Grid3X3, List, Users, UserCheck, UserX, Edit, Trash2, RefreshCw, AlertTriangle } from "lucide-react"
 import { useTenants } from "@/lib/hooks/useTenants"
 import { TenantDialog } from "@/components/tenants/tenant-dialog"
+import { TenantCard } from "@/components/tenants/tenant-card"
 import { EmptyState } from "@/components/ui/empty-state"
 import { ApiService } from "@/lib/api"
 
@@ -267,57 +268,12 @@ export function TenantsView() {
         ) : (
           <div className={viewMode === "grid" ? "grid gap-4 md:grid-cols-2 lg:grid-cols-3" : "space-y-4"}>
             {filteredTenants.map((tenant) => (
-              <Card key={tenant.id} className="p-4">
-                <div className="space-y-3">
-                  <div className="flex justify-between items-start">
-                    <h3 className="font-medium">{tenant.name}</h3>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleEdit(tenant)}
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDelete(tenant.id)}
-                        className="text-red-600 hover:text-red-700"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                  <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${
-                    tenant.status === 'active' ? 'bg-green-100 text-green-800' :
-                    'bg-gray-100 text-gray-800'
-                  }`}>
-                    {tenant.status === 'active' ? 'Ativo' : 'Inativo'}
-                  </span>
-                  <div className="space-y-1">
-                    <p className="text-sm text-gray-600">{tenant.email}</p>
-                    <p className="text-sm text-gray-600">{tenant.phone}</p>
-                    <p className="text-sm text-gray-500">CPF/CNPJ: {tenant.cpf_cnpj}</p>
-                    {tenant.profession && (
-                      <p className="text-sm text-gray-500">Profissão: {tenant.profession}</p>
-                    )}
-                    {tenant.birth_date && (
-                      <p className="text-sm text-gray-500">
-                        Nascimento: {new Date(tenant.birth_date).toLocaleDateString('pt-BR')}
-                      </p>
-                    )}
-                  </div>
-                  {tenant.emergency_contact && (
-                    <div className="pt-2 border-t border-gray-100">
-                      <p className="text-xs text-gray-500">Contato de emergência:</p>
-                      <p className="text-xs text-gray-600">
-                        {tenant.emergency_contact.name} ({tenant.emergency_contact.relationship}) - {tenant.emergency_contact.phone}
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </Card>
+              <TenantCard
+                key={tenant.id}
+                tenant={tenant as any}
+                onEdit={handleEdit}
+                onDelete={handleDelete}
+              />
             ))}
           </div>
         )}

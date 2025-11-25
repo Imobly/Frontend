@@ -287,3 +287,47 @@ export function isValidPhone(phone: string): boolean {
   
   return true
 }
+
+/**
+ * Máscara para percentuais
+ * Formato: 12,34
+ * Permite valores decimais com até 2 casas
+ */
+export function percentageMask(value: string | number): string {
+  if (!value && value !== 0) return ''
+  
+  // Se for número, converte para string com 2 decimais
+  let stringValue: string
+  if (typeof value === 'number') {
+    stringValue = value.toFixed(2).replace('.', ',')
+  } else {
+    // Remove tudo exceto números e vírgula
+    stringValue = value.replace(/[^\d,]/g, '')
+    
+    // Garante apenas uma vírgula
+    const parts = stringValue.split(',')
+    if (parts.length > 2) {
+      stringValue = `${parts[0]},${parts.slice(1).join('')}`
+    }
+    
+    // Limita casas decimais a 2
+    if (parts.length === 2 && parts[1].length > 2) {
+      stringValue = `${parts[0]},${parts[1].substring(0, 2)}`
+    }
+  }
+  
+  return stringValue
+}
+
+/**
+ * Remove máscara de percentual e retorna número
+ */
+export function percentageUnmask(value: string): number {
+  if (!value) return 0
+  
+  // Substitui vírgula por ponto e converte para número
+  const cleaned = value.replace(',', '.')
+  const number = parseFloat(cleaned)
+  
+  return isNaN(number) ? 0 : number
+}

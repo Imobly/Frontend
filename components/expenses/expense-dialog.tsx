@@ -86,7 +86,6 @@ export function ExpenseDialog({ open, onOpenChange, expense, onSave }: ExpenseDi
   const [uploadingDocs, setUploadingDocs] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
   const [dragActive, setDragActive] = useState(false)
-  const [selectedDocType, setSelectedDocType] = useState<'comprovante' | 'nota_fiscal' | 'recibo' | 'outros'>('comprovante')
   
   const { properties } = useProperties()
 
@@ -164,7 +163,7 @@ export function ExpenseDialog({ open, onOpenChange, expense, onSave }: ExpenseDi
       const result = await expensesService.uploadDocuments(
         expense.id,
         fileArray,
-        selectedDocType,
+        'comprovante',
         (progress) => setUploadProgress(progress)
       )
 
@@ -172,7 +171,7 @@ export function ExpenseDialog({ open, onOpenChange, expense, onSave }: ExpenseDi
       const newDocs = result.uploaded_files.map((file: any) => ({
         id: file.filename,
         name: file.original_filename,
-        type: selectedDocType,
+        type: 'comprovante' as const,
         url: file.url,
         file_type: file.type,
         size: file.size,
@@ -485,22 +484,6 @@ export function ExpenseDialog({ open, onOpenChange, expense, onSave }: ExpenseDi
                   </div>
                 ) : (
                   <>
-                    {/* Seletor de Tipo de Documento */}
-                    <div className="space-y-2 mb-4">
-                      <Label>Tipo de Documento</Label>
-                      <Select value={selectedDocType} onValueChange={(value: any) => setSelectedDocType(value)}>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="comprovante">Comprovante</SelectItem>
-                          <SelectItem value="nota_fiscal">Nota Fiscal</SelectItem>
-                          <SelectItem value="recibo">Recibo</SelectItem>
-                          <SelectItem value="outros">Outros</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
                     {/* Área de Upload */}
                     <div
                       onDragEnter={handleDrag}

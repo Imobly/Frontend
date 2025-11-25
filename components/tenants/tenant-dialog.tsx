@@ -17,7 +17,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Upload, X, Loader2, FileText } from "lucide-react"
 import { apiClient } from "@/lib/api/client"
-import { phoneMask, cpfCnpjMask, cpfCnpjUnmask, currencyMask, currencyUnmask, integerMask } from "@/lib/utils/masks"
+import { phoneMask, cpfCnpjMask, cpfCnpjUnmask, currencyMask, currencyUnmask, percentageMask, percentageUnmask, integerMask } from "@/lib/utils/masks"
 import { tenantsService } from "@/lib/api/tenants"
 import { toast } from "sonner"
 
@@ -553,7 +553,7 @@ export function TenantDialog({ open, onOpenChange, tenant, onSave }: TenantDialo
                         id="contract_title"
                         value={formData.contract?.title || ""}
                         onChange={(e) => handleNestedChange("contract", "title", e.target.value)}
-                        placeholder="Ex: Contrato de Locação - Apartamento 101"
+                        placeholder="Ex: Contrato Ana Costa - Apartamento 101"
                       />
                     </div>
 
@@ -607,15 +607,8 @@ export function TenantDialog({ open, onOpenChange, tenant, onSave }: TenantDialo
                           inputMode="decimal"
                           value={formData.contract?.rent || ""}
                           onChange={(e) => {
-                            const value = e.target.value.replace(/[^\d,]/g, '')
+                            const value = currencyMask(currencyUnmask(e.target.value))
                             handleNestedChange("contract", "rent", value)
-                          }}
-                          onBlur={(e) => {
-                            // Formatar ao sair do campo
-                            if (e.target.value) {
-                              const unmasked = currencyUnmask(e.target.value)
-                              handleNestedChange("contract", "rent", currencyMask(unmasked))
-                            }
                           }}
                           placeholder="0,00"
                           className="pl-10"
@@ -633,15 +626,8 @@ export function TenantDialog({ open, onOpenChange, tenant, onSave }: TenantDialo
                           inputMode="decimal"
                           value={formData.contract?.deposit || ""}
                           onChange={(e) => {
-                            const value = e.target.value.replace(/[^\d,]/g, '')
+                            const value = currencyMask(currencyUnmask(e.target.value))
                             handleNestedChange("contract", "deposit", value)
-                          }}
-                          onBlur={(e) => {
-                            // Formatar ao sair do campo
-                            if (e.target.value) {
-                              const unmasked = currencyUnmask(e.target.value)
-                              handleNestedChange("contract", "deposit", currencyMask(unmasked))
-                            }
                           }}
                           placeholder="0,00"
                           className="pl-10"
@@ -657,10 +643,10 @@ export function TenantDialog({ open, onOpenChange, tenant, onSave }: TenantDialo
                         inputMode="decimal"
                         value={formData.contract?.interest_rate || ""}
                         onChange={(e) => {
-                          const value = e.target.value.replace(/[^\d.]/g, '')
+                          const value = percentageMask(e.target.value)
                           handleNestedChange("contract", "interest_rate", value)
                         }}
-                        placeholder="Ex: 2.00"
+                        placeholder="Ex: 2,00"
                       />
                     </div>
 
@@ -672,10 +658,10 @@ export function TenantDialog({ open, onOpenChange, tenant, onSave }: TenantDialo
                         inputMode="decimal"
                         value={formData.contract?.fine_rate || ""}
                         onChange={(e) => {
-                          const value = e.target.value.replace(/[^\d.]/g, '')
+                          const value = percentageMask(e.target.value)
                           handleNestedChange("contract", "fine_rate", value)
                         }}
-                        placeholder="Ex: 10.00"
+                        placeholder="Ex: 10,00"
                       />
                     </div>
 

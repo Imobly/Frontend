@@ -15,22 +15,21 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Calculator, AlertCircle } from "lucide-react"
+import { Calculator, AlertCircle, Info, Loader2 } from "lucide-react"
 import { currencyMask, currencyUnmask } from "@/lib/utils/masks"
 import { useContracts } from "@/lib/hooks/useContracts"
 import { contractsService } from "@/lib/api/contracts"
-import { PaymentCreate, ContractResponse } from "@/lib/types/api"
+import { paymentsService } from "@/lib/api/payments"
+import { apiClient } from "@/lib/api/client"
+import { ContractResponse } from "@/lib/types/api"
+import { toast } from "sonner"
 
 interface PaymentFormData {
-  property_id: number
-  tenant_id: number
   contract_id: number
   due_date: string
-  amount: number
-  fine_amount: number
-  total_amount: number
-  status: "pending" | "paid" | "overdue" | "partial"
-  payment_method?: "cash" | "transfer" | "pix" | "check" | "card"
+  payment_date: string
+  paid_amount: string
+  payment_method?: "pix" | "boleto" | "transferencia" | "dinheiro" | "cartao_credito" | "cartao_debito" | "outro"
   description?: string
 }
 
@@ -38,27 +37,28 @@ interface PaymentDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   payment?: any | null
-  onSave: (payment: PaymentFormData) => void
+  onSave: () => void
 }
 
 const initialPayment: PaymentFormData = {
-  property_id: 0,
-  tenant_id: 0,
   contract_id: 0,
   due_date: "",
-  amount: 0,
-  fine_amount: 0,
-  total_amount: 0,
-  status: "pending",
+  payment_date: new Date().toISOString().split('T')[0],
+  paid_amount: "",
   payment_method: undefined,
   description: "",
 }
 
-// Configurações de multa (seria configurável no sistema real)
-const FINE_SETTINGS = {
-  type: "percentage", // "percentage" ou "fixed"
-  value: 5, // 5% ou valor fixo
-  dailyInterest: 0.033, // 0.033% ao dia
+interface CalculationResult {
+  base_amount: number
+  fine_amount: number
+  interest_amount: number
+  total_addition: number
+  total_expected: number
+  days_overdue: number
+  status: string
+  paid_amount: number
+  remaining_amount: number
 }
 
 export function PaymentDialog({ open, onOpenChange, payment, onSave }: PaymentDialogProps) {
@@ -66,64 +66,31 @@ export function PaymentDialog({ open, onOpenChange, payment, onSave }: PaymentDi
   const [isLoading, setIsLoading] = useState(false)
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
   const [selectedContract, setSelectedContract] = useState<ContractResponse | null>(null)
+  const [calculation, setCalculation] = useState<CalculationResult | null>(null)
+  const [isCalculating, setIsCalculating] = useState(false)
+  const [propertyName, setPropertyName] = useState<string>("")
+  const [tenantName, setTenantName] = useState<string>("")
+  const [dueDay, setDueDay] = useState<number>(0)
   
   const { contracts } = useContracts()
 
   useEffect(() => {
     if (payment) {
+      // Se for edição, carregar dados existentes
       setFormData({
-        property_id: payment.property_id || 0,
-        tenant_id: payment.tenant_id || 0,
         contract_id: payment.contract_id || 0,
         due_date: payment.due_date || "",
-        amount: payment.amount || 0,
-        fine_amount: payment.fine_amount || 0,
-        total_amount: payment.total_amount || 0,
-        status: payment.status || "pending",
-        payment_method: payment.payment_method || "",
+        payment_date: payment.payment_date || new Date().toISOString().split('T')[0],
+        paid_amount: payment.amount ? currencyMask(payment.amount) : "",
+        payment_method: payment.payment_method || undefined,
         description: payment.description || "",
       })
     } else {
       setFormData(initialPayment)
+      setCalculation(null)
+      setSelectedContract(null)
     }
-  }, [payment])
-
-  // Calcular multa e total automaticamente
-  useEffect(() => {
-    if (formData.amount > 0) {
-      const today = new Date()
-      const dueDate = new Date(formData.due_date)
-      
-      let fineAmount = 0
-      
-      // Se está em atraso ou marcado como overdue, calcular multa
-      if (formData.due_date && (formData.status === "overdue" || today > dueDate)) {
-        const diffTime = today.getTime() - dueDate.getTime()
-        const diffDays = Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)))
-
-        if (diffDays > 0) {
-          if (FINE_SETTINGS.type === "percentage") {
-            fineAmount = (formData.amount * FINE_SETTINGS.value) / 100
-          } else {
-            fineAmount = FINE_SETTINGS.value
-          }
-
-          // Adicionar juros diários
-          const dailyInterest = (formData.amount * FINE_SETTINGS.dailyInterest * diffDays) / 100
-          fineAmount += dailyInterest
-          fineAmount = Math.round(fineAmount * 100) / 100
-        }
-      }
-
-      const totalAmount = formData.amount + fineAmount
-
-      setFormData((prev) => ({
-        ...prev,
-        fine_amount: fineAmount,
-        total_amount: totalAmount,
-      }))
-    }
-  }, [formData.due_date, formData.amount, formData.status])
+  }, [payment, open])
 
   // Carregar dados do contrato selecionado
   const handleContractChange = async (contractId: string) => {
@@ -134,17 +101,72 @@ export function PaymentDialog({ open, onOpenChange, payment, onSave }: PaymentDi
       const contract = await contractsService.getContract(id)
       setSelectedContract(contract)
       
+      // Buscar nome do imóvel
+      try {
+        const property = await apiClient.get<{ name: string }>(`/properties/${contract.property_id}/`)
+        setPropertyName(property.name || `Imóvel #${contract.property_id}`)
+      } catch {
+        setPropertyName(`Imóvel #${contract.property_id}`)
+      }
+      
+      // Buscar nome do inquilino
+      try {
+        const tenant = await apiClient.get<{ name: string }>(`/tenants/${contract.tenant_id}/`)
+        setTenantName(tenant.name || `Inquilino #${contract.tenant_id}`)
+      } catch {
+        setTenantName(`Inquilino #${contract.tenant_id}`)
+      }
+      
+      // Calcular data de vencimento baseada no dia de início do contrato
+      const startDate = new Date(contract.start_date)
+      const dayOfMonth = startDate.getDate()
+      setDueDay(dayOfMonth)
+      
+      const today = new Date()
+      const dueDate = new Date(today.getFullYear(), today.getMonth(), dayOfMonth)
+      
       setFormData(prev => ({
         ...prev,
         contract_id: contract.id,
-        property_id: contract.property_id,
-        tenant_id: contract.tenant_id,
-        amount: contract.rent,
+        due_date: dueDate.toISOString().split('T')[0],
       }))
     } catch (error) {
       console.error('Erro ao carregar contrato:', error)
+      toast.error("Erro ao carregar dados do contrato")
     }
   }
+
+  // Calcular valores automaticamente quando mudar data de pagamento ou vencimento
+  useEffect(() => {
+    const calculate = async () => {
+      if (!formData.contract_id || !formData.due_date) return
+
+      setIsCalculating(true)
+      try {
+        const result = await paymentsService.calculatePayment({
+          contract_id: formData.contract_id,
+          due_date: formData.due_date,
+          payment_date: formData.payment_date || undefined,
+          paid_amount: formData.paid_amount ? currencyUnmask(formData.paid_amount) : undefined,
+        })
+        setCalculation(result)
+      } catch (error) {
+        console.error('Erro ao calcular pagamento:', error)
+      } finally {
+        setIsCalculating(false)
+      }
+    }
+
+    calculate()
+  }, [formData.contract_id, formData.due_date, formData.payment_date])
+
+  // Preenche automaticamente o valor pago com o total calculado se usuário não digitou nada
+  useEffect(() => {
+    if (calculation && (!formData.paid_amount || currencyUnmask(formData.paid_amount) === 0)) {
+      const autoValue = currencyMask(calculation.total_expected)
+      setFormData(prev => ({ ...prev, paid_amount: autoValue }))
+    }
+  }, [calculation])
 
   // Validação do formulário
   const validateForm = (): boolean => {
@@ -156,50 +178,79 @@ export function PaymentDialog({ open, onOpenChange, payment, onSave }: PaymentDi
     if (!formData.due_date) {
       errors.due_date = "Data de vencimento é obrigatória"
     }
-    if (!formData.amount || formData.amount <= 0) {
-      errors.amount = "Valor deve ser maior que zero"
+    if (!formData.payment_date) {
+      errors.payment_date = "Data de pagamento é obrigatória"
     }
-    if (!formData.status) {
-      errors.status = "Status é obrigatório"
-    }
-    if (!formData.description || formData.description.trim() === "") {
-      errors.description = "Descrição é obrigatória"
+    if (!formData.paid_amount || currencyUnmask(formData.paid_amount) <= 0) {
+      errors.paid_amount = "Valor deve ser maior que zero"
     }
 
     setValidationErrors(errors)
     return Object.keys(errors).length === 0
   }
 
+  const resolveErrorMessage = (error: any): string => {
+    const status = error?.response?.status
+    const data = error?.response?.data
+    if (!status) return 'Erro inesperado. Verifique sua conexão.'
+    switch (status) {
+      case 401:
+        return 'Sessão expirada. Faça login novamente.'
+      case 403:
+        return 'Sem permissão para este contrato.'
+      case 404:
+        return 'Recurso não encontrado.'
+      case 422: {
+        const detail = data?.detail
+        if (Array.isArray(detail)) return detail.map((d: any) => d.msg || d.message || JSON.stringify(d)).join(' | ')
+        return typeof detail === 'string' ? detail : 'Dados inválidos. Verifique os campos.'
+      }
+      case 500:
+        return 'Erro interno do servidor. Tente novamente.'
+      default:
+        return data?.detail || `Erro ${status}. Tente novamente.`
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
     if (!validateForm()) {
+      toast.error('Preencha todos os campos obrigatórios')
       return
     }
-
     setIsLoading(true)
-
     try {
-      console.log("💾 Salvando pagamento:", formData)
-      const paymentData: PaymentCreate = {
-        property_id: formData.property_id,
-        tenant_id: formData.tenant_id,
+      const paidAmount = currencyUnmask(formData.paid_amount)
+      if (!selectedContract) {
+        toast.error('Erro: Contrato não encontrado. Selecione novamente.')
+        return
+      }
+      try {
+        const storedUser = localStorage.getItem('user')
+        if (storedUser) {
+          const user = JSON.parse(storedUser)
+          if (selectedContract.user_id && user?.id && selectedContract.user_id !== user.id) {
+            toast.error('Este contrato pertence a outro usuário; não é possível registrar pagamento.')
+            return
+          }
+        }
+      } catch {}
+      const paymentData: any = {
         contract_id: formData.contract_id,
         due_date: formData.due_date,
-        amount: formData.amount,
-        fine_amount: formData.fine_amount,
-        total_amount: formData.total_amount,
-        status: formData.status,
-        payment_method: formData.payment_method,
-        description: formData.description || "",
+        payment_date: formData.payment_date,
+        paid_amount: paidAmount,
       }
-      
-      await onSave(paymentData)
-      
-      // Limpar validações em caso de sucesso
-      setValidationErrors({})
-    } catch (error) {
-      console.error("Erro ao salvar pagamento:", error)
+      if (selectedContract.property_id) paymentData.property_id = selectedContract.property_id
+      if (selectedContract.tenant_id) paymentData.tenant_id = selectedContract.tenant_id
+      if (formData.payment_method) paymentData.payment_method = formData.payment_method
+      if (formData.description && formData.description.trim() !== '') paymentData.description = formData.description.trim()
+      await paymentsService.registerPayment(paymentData)
+      toast.success('Pagamento registrado com sucesso!')
+      onSave()
+      onOpenChange(false)
+    } catch (error: any) {
+      toast.error(resolveErrorMessage(error))
     } finally {
       setIsLoading(false)
     }
@@ -209,42 +260,13 @@ export function PaymentDialog({ open, onOpenChange, payment, onSave }: PaymentDi
     setFormData((prev) => ({ ...prev, [field]: value }))
   }
 
-  const calculateFine = () => {
-    if (!formData.due_date || formData.amount <= 0) return
-
-    const today = new Date()
-    const dueDate = new Date(formData.due_date)
-
-    if (today > dueDate) {
-      const diffTime = today.getTime() - dueDate.getTime()
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-
-      let fineAmount = 0
-      if (FINE_SETTINGS.type === "percentage") {
-        fineAmount = (formData.amount * FINE_SETTINGS.value) / 100
-      } else {
-        fineAmount = FINE_SETTINGS.value
-      }
-
-      const dailyInterest = (formData.amount * FINE_SETTINGS.dailyInterest * diffDays) / 100
-      fineAmount += dailyInterest
-
-      setFormData((prev) => ({
-        ...prev,
-        fine_amount: Math.round(fineAmount * 100) / 100,
-        total_amount: prev.amount + Math.round(fineAmount * 100) / 100,
-        status: "overdue",
-      }))
-    }
-  }
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{payment ? "Editar Pagamento" : "Novo Pagamento"}</DialogTitle>
+          <DialogTitle>{payment ? "Editar Pagamento" : "Registrar Pagamento"}</DialogTitle>
           <DialogDescription>
-            {payment ? "Edite as informações do pagamento." : "Registre um novo pagamento."}
+            {payment ? "Edite as informações do pagamento." : "Registre um novo pagamento com cálculo automático de multa e juros."}
           </DialogDescription>
         </DialogHeader>
 
@@ -262,7 +284,7 @@ export function PaymentDialog({ open, onOpenChange, payment, onSave }: PaymentDi
               <SelectContent>
                 {contracts.filter(c => c.status === 'active').map((contract) => (
                   <SelectItem key={contract.id} value={contract.id.toString()}>
-                    {contract.title} - R$ {contract.rent.toLocaleString('pt-BR')}
+                    {contract.title} - R$ {parseFloat(contract.rent.toString()).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -275,7 +297,7 @@ export function PaymentDialog({ open, onOpenChange, payment, onSave }: PaymentDi
             )}
           </div>
 
-          {/* Dados Preenchidos Automaticamente */}
+          {/* Informações do Contrato */}
           {selectedContract && (
             <Card className="bg-gray-50">
               <CardHeader>
@@ -284,15 +306,19 @@ export function PaymentDialog({ open, onOpenChange, payment, onSave }: PaymentDi
               <CardContent className="space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span className="text-gray-600">Imóvel:</span>
-                  <span className="font-medium">ID #{selectedContract.property_id}</span>
+                  <span className="font-medium">{propertyName}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Inquilino:</span>
-                  <span className="font-medium">ID #{selectedContract.tenant_id}</span>
+                  <span className="font-medium">{tenantName}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Dia de Vencimento:</span>
+                  <span className="font-medium">Todo dia {dueDay}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Valor do Aluguel:</span>
-                  <span className="font-medium">R$ {selectedContract.rent.toLocaleString('pt-BR')}</span>
+                  <span className="font-medium">R$ {parseFloat(selectedContract.rent.toString()).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Vigência:</span>
@@ -300,36 +326,19 @@ export function PaymentDialog({ open, onOpenChange, payment, onSave }: PaymentDi
                     {new Date(selectedContract.start_date).toLocaleDateString('pt-BR')} até {new Date(selectedContract.end_date).toLocaleDateString('pt-BR')}
                   </span>
                 </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Taxa de Multa:</span>
+                  <span className="font-medium">{parseFloat(selectedContract.fine_rate.toString()).toFixed(2)}%</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Taxa de Juros:</span>
+                  <span className="font-medium">{parseFloat(selectedContract.interest_rate.toString()).toFixed(2)}% ao mês</span>
+                </div>
               </CardContent>
             </Card>
           )}
 
-          {/* Status */}
-          <div className="space-y-2">
-            <Label htmlFor="status">Status *</Label>
-            <Select 
-              value={formData.status} 
-              onValueChange={(value) => handleInputChange("status", value)}
-            >
-                <SelectTrigger className={validationErrors.status ? "border-red-500" : ""}>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="pending">Pendente</SelectItem>
-                  <SelectItem value="paid">Pago</SelectItem>
-                  <SelectItem value="overdue">Atrasado</SelectItem>
-                  <SelectItem value="partial">Pagamento Parcial</SelectItem>
-            </SelectContent>
-            </Select>
-            {validationErrors.status && (
-              <p className="text-sm text-red-500 flex items-center">
-                <AlertCircle className="h-3 w-3 mr-1" />
-                {validationErrors.status}
-              </p>
-            )}
-          </div>
-
-          {/* Datas e Valores */}
+          {/* Datas */}
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="due_date">Data de Vencimento *</Label>
@@ -350,116 +359,161 @@ export function PaymentDialog({ open, onOpenChange, payment, onSave }: PaymentDi
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="amount">Valor *</Label>
+              <Label htmlFor="payment_date">Data de Pagamento *</Label>
+              <Input
+                id="payment_date"
+                type="date"
+                value={formData.payment_date}
+                onChange={(e) => handleInputChange("payment_date", e.target.value)}
+                className={validationErrors.payment_date ? "border-red-500" : ""}
+                required
+              />
+              {validationErrors.payment_date && (
+                <p className="text-sm text-red-500 flex items-center">
+                  <AlertCircle className="h-3 w-3 mr-1" />
+                  {validationErrors.payment_date}
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Cálculo Automático */}
+          {calculation && (
+            <Card className="border-blue-200 bg-blue-50">
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center">
+                  <Calculator className="mr-2 h-5 w-5" />
+                  Cálculo Automático
+                </CardTitle>
+                <CardDescription className="flex items-center gap-2">
+                  {calculation.days_overdue > 0 ? (
+                    <>
+                      <span className="px-2 py-0.5 rounded text-xs bg-red-100 text-red-700 font-medium">Atrasado</span>
+                      Pagamento com {calculation.days_overdue} dias de atraso
+                    </>
+                  ) : (
+                    <span className="px-2 py-0.5 rounded text-xs bg-green-100 text-green-700 font-medium">Em dia</span>
+                  )}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-gray-700">Valor Base:</span>
+                    <span className="font-medium">R$ {parseFloat(calculation.base_amount.toString()).toFixed(2).replace('.', ',')}</span>
+                  </div>
+                  {parseFloat(calculation.fine_amount.toString()) > 0 && (
+                    <div className="flex justify-between text-orange-700">
+                      <span>Multa ({selectedContract ? parseFloat(selectedContract.fine_rate.toString()).toFixed(2) : '0.00'}%):</span>
+                      <span className="font-medium">R$ {parseFloat(calculation.fine_amount.toString()).toFixed(2).replace('.', ',')}</span>
+                    </div>
+                  )}
+                  {parseFloat(calculation.interest_amount.toString()) > 0 && (
+                    <div className="flex justify-between text-orange-700">
+                      <span>Juros ({calculation.days_overdue} dias):</span>
+                      <span className="font-medium">R$ {parseFloat(calculation.interest_amount.toString()).toFixed(2).replace('.', ',')}</span>
+                    </div>
+                  )}
+                  <div className="border-t pt-2 mt-2 flex justify-between text-lg font-bold">
+                    <span>Total a Pagar:</span>
+                    <span className="text-green-700">R$ {parseFloat(calculation.total_expected.toString()).toFixed(2).replace('.', ',')}</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {isCalculating && (
+            <div className="flex items-center justify-center text-sm text-gray-500">
+              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              Calculando...
+            </div>
+          )}
+
+          {/* Valor Pago e Forma de Pagamento */}
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="paid_amount">Valor Pago *</Label>
               <div className="relative">
                 <span className="absolute left-3 top-2.5 text-gray-500">R$</span>
                 <Input
-                  id="amount"
+                  id="paid_amount"
                   type="text"
                   inputMode="decimal"
-                  value={formData.amount ? currencyMask(formData.amount) : ""}
-                  onChange={(e) => {
-                    const value = currencyUnmask(e.target.value)
-                    handleInputChange("amount", value)
-                  }}
+                  value={formData.paid_amount}
+                  onChange={(e) => handleInputChange("paid_amount", currencyMask(currencyUnmask(e.target.value)))}
                   placeholder="0,00"
-                  className={validationErrors.amount ? "border-red-500 pl-10" : "pl-10"}
+                  className={validationErrors.paid_amount ? "border-red-500 pl-10" : "pl-10"}
                   required
                 />
               </div>
-              {validationErrors.amount && (
+              {calculation && currencyUnmask(formData.paid_amount) !== calculation.total_expected && (
+                <p className="text-xs text-orange-600 flex items-center">
+                  <Info className="h-3 w-3 mr-1" />
+                  Total calculado: R$ {calculation.total_expected.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  <Button type="button" variant="link" className="p-0 ml-2 h-auto text-xs" onClick={() => handleInputChange('paid_amount', currencyMask(calculation.total_expected))}>Usar total</Button>
+                </p>
+              )}
+              {validationErrors.paid_amount && (
                 <p className="text-sm text-red-500 flex items-center">
                   <AlertCircle className="h-3 w-3 mr-1" />
-                  {validationErrors.amount}
+                  {validationErrors.paid_amount}
                 </p>
               )}
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="payment_method">Forma de Pagamento</Label>
+              <Label htmlFor="payment_method">Forma de Pagamento (Opcional)</Label>
               <Select
-                value={formData.payment_method || "none"}
-                onValueChange={(value) => handleInputChange("payment_method", value === "none" ? undefined : value as any)}
+                value={formData.payment_method || ""}
+                onValueChange={(value) => handleInputChange("payment_method", value as any)}
               >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione a forma (opcional)" />
+                <SelectTrigger className={validationErrors.payment_method ? "border-red-500" : ""}>
+                  <SelectValue placeholder="Selecione a forma" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">Não especificado</SelectItem>
                   <SelectItem value="pix">PIX</SelectItem>
-                  <SelectItem value="transfer">Transferência Bancária</SelectItem>
-                  <SelectItem value="cash">Dinheiro</SelectItem>
-                  <SelectItem value="check">Cheque</SelectItem>
-                  <SelectItem value="card">Cartão</SelectItem>
+                  <SelectItem value="boleto">Boleto</SelectItem>
+                  <SelectItem value="transferencia">Transferência Bancária</SelectItem>
+                  <SelectItem value="dinheiro">Dinheiro</SelectItem>
+                  <SelectItem value="cartao_credito">Cartão de Crédito</SelectItem>
+                  <SelectItem value="cartao_debito">Cartão de Débito</SelectItem>
+                  <SelectItem value="outro">Outro</SelectItem>
                 </SelectContent>
               </Select>
+              {validationErrors.payment_method && (
+                <p className="text-sm text-red-500 flex items-center">
+                  <AlertCircle className="h-3 w-3 mr-1" />
+                  {validationErrors.payment_method}
+                </p>
+              )}
             </div>
           </div>
 
-          {/* Cálculo de Multa */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center">
-                <Calculator className="mr-2 h-5 w-5" />
-                Cálculo de Multa
-              </CardTitle>
-              <CardDescription>
-                Multa: {FINE_SETTINGS.value}% + {FINE_SETTINGS.dailyInterest}% ao dia após vencimento
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid gap-4 md:grid-cols-3">
-                <div className="space-y-2">
-                  <Label>Valor Original</Label>
-                  <div className="text-lg font-semibold">R$ {formData.amount.toLocaleString("pt-BR")}</div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Multa</Label>
-                  <div className="text-lg font-semibold text-red-600">
-                    R$ {(formData.fine_amount || 0).toLocaleString("pt-BR")}
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Total</Label>
-                  <div className="text-xl font-bold">R$ {formData.total_amount.toLocaleString("pt-BR")}</div>
-                </div>
-              </div>
-
-              <Button type="button" variant="outline" onClick={calculateFine} className="mt-4 bg-transparent">
-                <Calculator className="mr-2 h-4 w-4" />
-                Recalcular Multa
-              </Button>
-            </CardContent>
-          </Card>
-
           {/* Descrição */}
           <div className="space-y-2">
-            <Label htmlFor="description">Descrição *</Label>
+            <Label htmlFor="description">Descrição (Opcional)</Label>
             <Textarea
               id="description"
               value={formData.description}
               onChange={(e) => handleInputChange("description", e.target.value)}
-              placeholder="Ex: Aluguel referente a dezembro/2024"
+              placeholder="Ex: Pagamento referente a novembro/2025"
               rows={3}
-              className={validationErrors.description ? "border-red-500" : ""}
-              required
             />
-            {validationErrors.description && (
-              <p className="text-sm text-red-500 flex items-center">
-                <AlertCircle className="h-3 w-3 mr-1" />
-                {validationErrors.description}
-              </p>
-            )}
           </div>
-
-          <DialogFooter>
+          <DialogFooter className="mt-6">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancelar
             </Button>
-            <Button type="submit" disabled={isLoading}>
-              {isLoading ? "Salvando..." : payment ? "Salvar Alterações" : "Criar Pagamento"}
+            <Button type="submit" disabled={isLoading || isCalculating}>
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Salvando...
+                </>
+              ) : (
+                "Registrar Pagamento"
+              )}
             </Button>
           </DialogFooter>
         </form>
