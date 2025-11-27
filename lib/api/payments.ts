@@ -94,6 +94,11 @@ export class PaymentsService {
     return apiClient.post<PaymentResponse[]>(`${this.endpoint}/bulk-confirm/`, data)
   }
 
+  // Excluir pagamento
+  async deletePayment(id: number): Promise<{ message: string }> {
+    return apiClient.delete<{ message: string }>(`${this.endpoint}/${id}/`)
+  }
+
   // Calcular valores de pagamento (multa, juros, total)
   async calculatePayment(data: {
     contract_id: number;

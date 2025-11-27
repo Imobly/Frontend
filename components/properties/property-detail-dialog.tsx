@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge"
 import { ChevronLeft, ChevronRight, MapPin, Bed, Bath, Car, Edit, Trash2 } from "lucide-react"
 import { Property } from "@/lib/types/property"
 import Image from "next/image"
+import { useTenants } from "@/lib/hooks/useTenants"
 
 interface PropertyDetailDialogProps {
   open: boolean
@@ -41,6 +42,8 @@ export function PropertyDetailDialog({
   onDelete,
 }: PropertyDetailDialogProps) {
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
+  const { tenants } = useTenants()
+  const tenantName = property.tenant_id ? tenants.find(t => t.id === property.tenant_id)?.name : undefined
   
   // Construir URLs completas das imagens
   const baseUrl = process.env.NEXT_PUBLIC_API_URL?.replace('/api/v1', '') || 'http://localhost:8000'
@@ -216,10 +219,10 @@ export function PropertyDetailDialog({
                 )}
 
                 {/* Inquilino */}
-                {property.tenant && (
+                {tenantName && (
                   <div>
                     <h3 className="font-semibold mb-2">Inquilino Atual</h3>
-                    <p className="text-sm">{property.tenant}</p>
+                    <p className="text-sm">{tenantName}</p>
                   </div>
                 )}
 

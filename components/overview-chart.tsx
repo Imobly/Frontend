@@ -1,7 +1,7 @@
 "use client"
 
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, Legend } from "recharts"
-import { useRevenueChart, useExpenseChart } from "@/lib/hooks/useDashboard"
+import { useRevenueVsExpenses } from "@/lib/hooks/useDashboard"
 import { RefreshCw } from "lucide-react"
 
 interface OverviewChartProps {
@@ -21,11 +21,10 @@ const periodToMonths = (period: string): number => {
 
 export function OverviewChart({ period = "6months" }: OverviewChartProps) {
   const months = periodToMonths(period)
-  const { data: revenueData, loading: revenueLoading } = useRevenueChart(months)
-  const { data: expenseData, loading: expenseLoading } = useExpenseChart(months)
+  const { data, loading, error } = useRevenueVsExpenses(months)
 
   // Loading state
-  if (revenueLoading || expenseLoading) {
+  if (loading) {
     return (
       <div className="flex items-center justify-center h-[350px]">
         <RefreshCw className="h-6 w-6 animate-spin text-gray-400" />
@@ -34,15 +33,23 @@ export function OverviewChart({ period = "6months" }: OverviewChartProps) {
     )
   }
 
-  // Combinar dados de receitas e despesas
-  const chartData = revenueData?.data?.map((revenue: any, index: number) => {
-    const expense = expenseData?.data?.[index] || { expenses: 0 }
-    return {
-      name: new Date(revenue.month).toLocaleDateString('pt-BR', { month: 'short' }),
-      receitas: revenue.revenue || 0,
-      despesas: expense.expenses || 0,
-    }
-  }) || []
+  // Error state
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[350px] text-gray-500">
+        <p className="text-sm">{error}</p>
+      </div>
+    )
+  }
+
+  // Formatar dados para o gráfico
+  const chartData = data?.data?.map((item) => ({
+    name: new Date(item.month).toLocaleDateString('pt-BR', { month: 'short' }),
+    receitas: item.revenue || 0,
+    despesas: item.expenses || 0,
+    lucro: item.profit || 0,
+  })) || []
+
   return (
     <ResponsiveContainer width="100%" height={350}>
       <BarChart data={chartData}>
@@ -60,7 +67,7 @@ export function OverviewChart({ period = "6months" }: OverviewChartProps) {
         />
         <Legend />
         <Bar dataKey="receitas" name="Receitas" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-        <Bar dataKey="despesas" name="Despesas" fill="#1e40af" radius={[4, 4, 0, 0]} />
+        <Bar dataKey="despesas" name="Despesas" fill="#ef4444" radius={[4, 4, 0, 0]} />
       </BarChart>
     </ResponsiveContainer>
   )

@@ -9,6 +9,7 @@ interface UsePaymentsReturn {
   refetch: () => Promise<void>
   confirmPayment: (id: number, data?: any) => Promise<boolean>
   createPayment: (payment: any) => Promise<PaymentResponse | null>
+  deletePayment: (id: number) => Promise<boolean>
 }
 
 export function usePayments(filters?: PaymentFilters): UsePaymentsReturn {
@@ -59,6 +60,19 @@ export function usePayments(filters?: PaymentFilters): UsePaymentsReturn {
     }
   }
 
+  const deletePayment = async (id: number): Promise<boolean> => {
+    try {
+      await ApiService.payments.deletePayment(id)
+      setPayments(prev => prev.filter(p => p.id !== id))
+      return true
+    } catch (err) {
+      const errorMessage = handleApiError(err)
+      setError(errorMessage)
+      console.error('❌ Erro ao excluir pagamento:', err)
+      return false
+    }
+  }
+
   useEffect(() => {
     fetchPayments()
   }, [filters])
@@ -69,7 +83,8 @@ export function usePayments(filters?: PaymentFilters): UsePaymentsReturn {
     error,
     refetch: fetchPayments,
     confirmPayment,
-    createPayment
+    createPayment,
+    deletePayment
   }
 }
 

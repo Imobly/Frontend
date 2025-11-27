@@ -221,6 +221,30 @@ export function PaymentDialog({ open, onOpenChange, payment, onSave }: PaymentDi
     setIsLoading(true)
     try {
       const paidAmount = currencyUnmask(formData.paid_amount)
+      // Edição de pagamento existente
+      if (payment?.id) {
+        const updateBody: any = {
+          due_date: formData.due_date,
+          payment_date: formData.payment_date,
+          amount: calculation?.base_amount ?? undefined,
+          fine_amount: calculation?.fine_amount ?? undefined,
+          total_amount: paidAmount || calculation?.total_expected || undefined,
+          payment_method: formData.payment_method,
+          description: formData.description?.trim() || undefined,
+        }
+        // Definir status conforme valores
+        if (paidAmount) {
+          const expected = calculation?.total_expected ?? paidAmount
+          updateBody.status = paidAmount >= expected ? 'paid' : 'partial'
+        }
+        await paymentsService.updatePayment(payment.id, updateBody)
+        toast.success('Pagamento atualizado com sucesso!')
+        onSave()
+        onOpenChange(false)
+        return
+      }
+
+      // Registro de novo pagamento
       if (!selectedContract) {
         toast.error('Erro: Contrato não encontrado. Selecione novamente.')
         return

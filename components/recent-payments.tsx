@@ -1,82 +1,107 @@
 "use client"
 
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { useState, useEffect } from "react"
 import { Badge } from "@/components/ui/badge"
+import { RefreshCw } from "lucide-react"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { dashboardService } from "@/lib/api/dashboard"
+import { RecentActivity } from "@/lib/types/api"
 
-const recentPayments = [
-  {
-    id: 1,
-    tenant: "Maria Silva",
-    property: "Apt 101 - Centro",
-    amount: 2500,
-    status: "paid",
-    date: "2024-12-15",
-  },
-  {
-    id: 2,
-    tenant: "João Santos",
-    property: "Casa - Jardins",
-    amount: 3200,
-    status: "pending",
-    date: "2024-12-10",
-  },
-  {
-    id: 3,
-    tenant: "Ana Costa",
-    property: "Apt 205 - Vila Nova",
-    amount: 1800,
-    status: "paid",
-    date: "2024-12-08",
-  },
-  {
-    id: 4,
-    tenant: "Carlos Lima",
-    property: "Loja - Centro",
-    amount: 4500,
-    status: "overdue",
-    date: "2024-12-05",
-  },
-  {
-    id: 5,
-    tenant: "Lucia Ferreira",
-    property: "Apt 302 - Bela Vista",
-    amount: 2200,
-    status: "paid",
-    date: "2024-12-03",
-  },
-]
+interface RecentPaymentsProps {
+  period?: string
+}
 
 const statusConfig = {
   paid: { label: "Pago", className: "bg-green-100 text-green-800" },
   pending: { label: "Pendente", className: "bg-yellow-100 text-yellow-800" },
+  partial: { label: "Parcial", className: "bg-orange-100 text-orange-800" },
   overdue: { label: "Atrasado", className: "bg-red-100 text-red-800" },
 }
 
-export function RecentPayments() {
+export function RecentPayments({ period = "6months" }: RecentPaymentsProps) {
+  const [activities, setActivities] = useState<RecentActivity[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    const fetchActivities = async () => {
+      try {
+        setLoading(true)
+        setError(null)
+        const data = await dashboardService.getRecentActivity(5)
+        
+        // Validar dados das atividades
+        const validatedActivities = (data.activities || []).map(activity => ({
+          ...activity,
+          amount: activity.amount || 0,
+          status: activity.status || 'pending'
+        }))
+        
+        console.log('📋 Dados de pagamentos recentes:', validatedActivities)
+        setActivities(validatedActivities)
+      } catch (err: any) {
+        const errorMessage = err?.detail || "Erro ao carregar pagamentos recentes"
+        setError(errorMessage)
+        console.error("❌ Erro ao carregar atividades recentes:", err)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchActivities()
+  }, [period])
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-[200px]">
+        <RefreshCw className="h-5 w-5 animate-spin text-gray-400" />
+        <span className="ml-2 text-sm text-gray-600">Carregando...</span>
+      </div>
+    )
+  }
+
+  if (error || activities.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[200px] text-gray-500">
+        <p className="text-sm">{error || "Nenhuma atividade recente"}</p>
+      </div>
+    )
+  }
+
+  const getInitials = (name?: string) => {
+    if (!name) return "?"
+    const parts = name.trim().split(/\s+/)
+    if (parts.length === 1) return parts[0].charAt(0).toUpperCase()
+    return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase()
+  }
+
   return (
-    <div className="space-y-4">
-      {recentPayments.map((payment) => (
-        <div key={payment.id} className="flex items-center space-x-4">
-          <Avatar className="h-9 w-9">
-            <AvatarFallback>
-              {payment.tenant
-                .split(" ")
-                .map((n) => n[0])
-                .join("")}
-            </AvatarFallback>
-          </Avatar>
-          <div className="flex-1 space-y-1">
-            <p className="text-sm font-medium leading-none">{payment.tenant}</p>
-            <p className="text-xs text-muted-foreground">{payment.property}</p>
+    <div className="space-y-2">
+      {activities.map((activity) => {
+        const initials = getInitials(activity.tenant_name)
+        return (
+          <div key={activity.id} className="flex items-center justify-between py-2 border-b last:border-0">
+            <div className="flex items-start gap-3 min-w-0">
+              <Avatar className="h-9 w-9 text-xs font-semibold bg-muted">
+                <AvatarFallback>{initials}</AvatarFallback>
+              </Avatar>
+              <div className="min-w-0">
+                <p className="text-sm font-medium truncate">{activity.tenant_name || 'Inquilino desconhecido'}</p>
+                <p className="text-xs text-muted-foreground truncate">{activity.property_address || 'Endereço não disponível'}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 pl-3">
+              <p className="text-sm font-semibold whitespace-nowrap">R$ {(activity.amount || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+              <Badge
+                variant="secondary"
+                className={statusConfig[activity.status as keyof typeof statusConfig]?.className || "bg-gray-100 text-gray-800"}
+              >
+                {statusConfig[activity.status as keyof typeof statusConfig]?.label || activity.status}
+              </Badge>
+            </div>
           </div>
-          <div className="text-right space-y-1">
-            <p className="text-sm font-medium">R$ {payment.amount.toLocaleString("pt-BR")}</p>
-            <Badge variant="secondary" className={statusConfig[payment.status as keyof typeof statusConfig].className}>
-              {statusConfig[payment.status as keyof typeof statusConfig].label}
-            </Badge>
-          </div>
-        </div>
-      ))}
+        )
+      })}
     </div>
   )
 }

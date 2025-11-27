@@ -29,7 +29,7 @@ export interface PropertyBase {
   description?: string;
   images?: string[];
   is_residential: boolean;
-  tenant?: string;
+  tenant_id?: number | null;
 }
 
 export interface PropertyCreate extends PropertyBase {}
@@ -243,23 +243,65 @@ export interface NotificationCount {
 export interface DashboardSummary {
   properties: {
     total: number;
-    total_units: number;
     occupied_units: number;
+    vacant_units: number;
     occupancy_rate: number;
   };
   contracts: {
     active: number;
     expiring_soon: number;
+    expired: number;
   };
   financial: {
     monthly_revenue: number;
     monthly_expenses: number;
-    net_profit: number;
     overdue_payments: number;
+    total_received: number;
   };
-  notifications: {
-    unread_count: number;
+}
+
+export interface DashboardStats {
+  total_properties: number;
+  total_tenants: number;
+  total_contracts: number;
+  monthly_revenue: number;
+}
+
+export interface RevenueVsExpensesData {
+  data: Array<{
+    month: string;
+    revenue: number;
+    expenses: number;
+    profit: number;
+  }>;
+}
+
+export interface PropertiesStatusResponse {
+  summary?: {
+    occupancy_rate: number;
+    total_revenue: number;
+    total_expenses: number;
   };
+  properties: Array<{
+    id: number;
+    property_id?: number;
+    property_name?: string;
+    name?: string;
+    address?: string;
+    status: 'occupied' | 'vacant' | 'maintenance';
+    type?: string;
+    tenant_name?: string;
+    active_contracts?: number;
+    expected_monthly_revenue?: number;
+    received_monthly_revenue?: number;
+    monthly_revenue?: number;
+    monthly_expenses?: number;
+    net_profit?: number;
+    occupancy_rate?: number;
+    bedrooms?: number;
+    bathrooms?: number;
+    parking_spaces?: number;
+  }>;
 }
 
 export interface RevenueChartData {
@@ -291,10 +333,15 @@ export interface PropertyPerformance {
 
 export interface RecentActivity {
   activities: Array<{
-    type: 'payment' | 'contract';
+    id: number;
+    type: string;
     description: string;
-    date: string;
-    related_id: number;
+    amount: number;
+    status: string;
+    tenant_name?: string;
+    property_name?: string;
+    property_address?: string;
+    created_at: string;
   }>;
 }
 

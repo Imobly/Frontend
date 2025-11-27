@@ -1,8 +1,9 @@
 import { apiClient } from './client'
 import {
   DashboardSummary,
-  RevenueChartData,
-  ExpenseChartData,
+  DashboardStats,
+  RevenueVsExpensesData,
+  PropertiesStatusResponse,
   PropertyPerformance,
   RecentActivity,
   HealthCheck,
@@ -12,19 +13,26 @@ import {
 export class DashboardService {
   private readonly endpoint = '/dashboard'
 
-  // Obter resumo do dashboard
+  // Obter estatísticas básicas
+  async getStats(): Promise<DashboardStats> {
+    return apiClient.get<DashboardStats>(`${this.endpoint}/stats`)
+  }
+
+  // Obter resumo completo do dashboard
   async getSummary(): Promise<DashboardSummary> {
     return apiClient.get<DashboardSummary>(`${this.endpoint}/summary`)
   }
 
-  // Obter dados para gráfico de receitas
-  async getRevenueChart(months: number = 12): Promise<RevenueChartData> {
-    return apiClient.get<RevenueChartData>(`${this.endpoint}/revenue-chart?months=${months}`)
+  // Obter dados de receitas vs despesas
+  async getRevenueVsExpenses(months: number = 12, propertyId?: number): Promise<RevenueVsExpensesData> {
+    const params = new URLSearchParams({ months: months.toString() })
+    if (propertyId) params.append('property_id', propertyId.toString())
+    return apiClient.get<RevenueVsExpensesData>(`${this.endpoint}/revenue-vs-expenses?${params}`)
   }
 
-  // Obter dados para gráfico de despesas
-  async getExpenseChart(months: number = 12): Promise<ExpenseChartData> {
-    return apiClient.get<ExpenseChartData>(`${this.endpoint}/expense-chart?months=${months}`)
+  // Obter status das propriedades
+  async getPropertiesStatus(): Promise<PropertiesStatusResponse> {
+    return apiClient.get<PropertiesStatusResponse>(`${this.endpoint}/properties-status`)
   }
 
   // Obter performance das propriedades

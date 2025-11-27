@@ -37,7 +37,7 @@ export interface Property {
   units?: Unit[]
   isResidential?: boolean
   is_residential?: boolean // compatibilidade com API
-  tenant?: string | null
+  tenant_id?: number | null
   createdAt?: string
   created_at?: string // compatibilidade com API
   updated_at?: string
@@ -65,7 +65,7 @@ export interface PropertyFormData {
   units?: Unit[]
   isResidential?: boolean
   is_residential?: boolean
-  tenant?: string | null
+  tenant_id?: number | null
   createdAt?: string
   created_at?: string
   updated_at?: string
@@ -93,7 +93,7 @@ export const convertApiToProperty = (apiProperty: PropertyResponse): Property =>
   images: apiProperty.images,
   isResidential: apiProperty.is_residential,
   is_residential: apiProperty.is_residential,
-  tenant: apiProperty.tenant,
+  tenant_id: apiProperty.tenant_id ?? null,
   createdAt: apiProperty.created_at,
   created_at: apiProperty.created_at,
   updated_at: apiProperty.updated_at
@@ -116,5 +116,5 @@ export const convertPropertyToApi = (property: PropertyFormData): Partial<Proper
   description: property.description,
   images: property.images,
   is_residential: property.isResidential ?? property.is_residential ?? true,
-  tenant: property.tenant || undefined
+  tenant_id: property.tenant_id ?? null
 })

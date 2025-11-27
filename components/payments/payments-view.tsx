@@ -4,10 +4,9 @@ import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Plus, Search, Filter, Grid3X3, List, AlertTriangle, TrendingUp, CheckCircle, Clock, XCircle, RefreshCw, DollarSign } from "lucide-react"
+import { Plus, Search, Filter, AlertTriangle, TrendingUp, CheckCircle, Clock, XCircle, RefreshCw, DollarSign } from "lucide-react"
 import { usePayments } from "@/lib/hooks/usePayments"
 import { PaymentDialog } from "./payment-dialog"
-import { PaymentCard } from "./payment-card"
 import { PaymentList } from "./payment-list"
 import { PaymentCreate, PaymentResponse } from "@/lib/types/api"
 import { convertApiToPayment, Payment } from "@/lib/types/payment"
@@ -16,9 +15,8 @@ import { EmptyState } from "@/components/ui/empty-state"
 
 
 export function PaymentsView() {
-  const { payments, loading, error, refetch, createPayment, confirmPayment } = usePayments()
+  const { payments, loading, error, refetch, createPayment, confirmPayment, deletePayment } = usePayments()
   const [searchTerm, setSearchTerm] = useState("")
-  const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [selectedPayment, setSelectedPayment] = useState<any>(null)
 
@@ -66,6 +64,7 @@ export function PaymentsView() {
     total: payments.length,
     paid: payments.filter((p) => p.status === "paid").length,
     pending: payments.filter((p) => p.status === "pending").length,
+    partial: payments.filter((p) => p.status === "partial").length,
     overdue: payments.filter((p) => p.status === "overdue").length,
   }
 
@@ -74,7 +73,7 @@ export function PaymentsView() {
     .filter((p) => p.status === "paid")
     .reduce((sum, payment) => sum + payment.total_amount, 0)
   const pendingAmount = payments
-    .filter((p) => p.status === "pending" || p.status === "overdue")
+    .filter((p) => p.status === "pending" || p.status === "partial" || p.status === "overdue")
     .reduce((sum, payment) => sum + payment.total_amount, 0)
 
   const handleCreatePayment = () => {
@@ -87,24 +86,22 @@ export function PaymentsView() {
     setIsDialogOpen(true)
   }
 
-  const handleSavePayment = async (paymentData: PaymentCreate) => {
+  const handleSavePayment = async () => {
     try {
-      if (selectedPayment) {
-        // Editar pagamento existente (implementar updatePayment no hook se necessário)
-        console.log("Editando pagamento:", paymentData)
-      } else {
-        // Criar novo pagamento
-        console.log("📋 Dados do pagamento a serem enviados:", paymentData)
-        
-        const success = await createPayment(paymentData)
-        if (success) {
-          setIsDialogOpen(false)
-          await refetch()
-        }
-      }
+      // O diálogo já registra/edita o pagamento via serviço; aqui apenas refazemos o fetch
+      setIsDialogOpen(false)
+      await refetch()
     } catch (error) {
       console.error("Erro ao salvar pagamento:", error)
     }
+  }
+
+  const handleDeletePayment = async (payment: any) => {
+    if (!payment?.id) return
+    const confirmed = window.confirm("Tem certeza que deseja excluir este pagamento?")
+    if (!confirmed) return
+    const success = await deletePayment(payment.id)
+    if (!success) return
   }
 
   const handleConfirmPayment = async (paymentId: number) => {
@@ -208,25 +205,6 @@ export function PaymentsView() {
           <Filter className="mr-2 h-4 w-4" />
           Filtros
         </Button>
-
-        <div className="flex items-center border rounded-md">
-          <Button
-            variant={viewMode === "grid" ? "secondary" : "ghost"}
-            size="sm"
-            onClick={() => setViewMode("grid")}
-            className="border-0"
-          >
-            <Grid3X3 className="h-4 w-4" />
-          </Button>
-          <Button
-            variant={viewMode === "list" ? "secondary" : "ghost"}
-            size="sm"
-            onClick={() => setViewMode("list")}
-            className="border-0"
-          >
-            <List className="h-4 w-4" />
-          </Button>
-        </div>
       </div>
 
       {/* Content */}
@@ -250,20 +228,11 @@ export function PaymentsView() {
             </p>
           </CardContent>
         </Card>
-      ) : viewMode === "grid" ? (
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {filteredPayments.map((payment) => (
-            <PaymentCard
-              key={payment.id}
-              payment={payment}
-              onEdit={() => handleEditPayment(payment)}
-            />
-          ))}
-        </div>
       ) : (
         <PaymentList
           payments={filteredPayments}
           onEdit={handleEditPayment}
+          onDelete={handleDeletePayment}
         />
       )}
 

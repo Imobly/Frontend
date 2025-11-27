@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { MoreHorizontal, Edit, Trash2, Eye, MapPin } from "lucide-react"
 import { Property } from "@/lib/types/property"
+import { useTenants } from "@/lib/hooks/useTenants"
 
 interface PropertyListProps {
   properties: Property[]
@@ -25,6 +26,7 @@ const typeConfig = {
 }
 
 export function PropertyList({ properties, onEdit }: PropertyListProps) {
+  const { tenants } = useTenants()
   return (
     <div className="rounded-md border">
       <Table>
@@ -61,7 +63,7 @@ export function PropertyList({ properties, onEdit }: PropertyListProps) {
                   {property.parkingSpaces > 0 && `, ${property.parkingSpaces} vagas`}
                 </div>
               </TableCell>
-              <TableCell>{property.tenant || "-"}</TableCell>
+              <TableCell>{property.tenant_id ? (tenants.find(t => t.id === property.tenant_id)?.name || `#${property.tenant_id}`) : "-"}</TableCell>
               <TableCell className="font-medium">R$ {property.rent.toLocaleString("pt-BR")}</TableCell>
               <TableCell>
                 <Badge

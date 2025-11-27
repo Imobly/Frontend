@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { MapPin, Bed, Bath, Car, Edit, Trash2, ChevronLeft, ChevronRight } from "lucide-react"
 import Image from "next/image"
 import { Property } from "@/lib/types/property"
+import { useTenants } from "@/lib/hooks/useTenants"
 import { PropertyDetailDialog } from "./property-detail-dialog"
 
 interface PropertyCardProps {
@@ -30,6 +31,8 @@ const typeConfig = {
 export function PropertyCard({ property, onEdit, onDelete }: PropertyCardProps) {
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
   const [showDetailDialog, setShowDetailDialog] = useState(false)
+  const { tenants } = useTenants()
+  const tenantName = property.tenant_id ? tenants.find(t => t.id === property.tenant_id)?.name : undefined
   
   // Construir URLs completas das imagens
   const baseUrl = process.env.NEXT_PUBLIC_API_URL?.replace('/api/v1', '') || 'http://localhost:8000'
@@ -174,10 +177,10 @@ export function PropertyCard({ property, onEdit, onDelete }: PropertyCardProps) 
             )}
           </div>
 
-          {property.tenant && (
+          {tenantName && (
             <div className="flex items-center justify-between text-sm">
               <span className="text-muted-foreground">Inquilino:</span>
-              <span>{property.tenant}</span>
+              <span>{tenantName}</span>
             </div>
           )}
 

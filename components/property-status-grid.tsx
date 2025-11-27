@@ -1,121 +1,134 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Building2, MapPin, Users } from "lucide-react"
+import { Building2, MapPin, User, RefreshCw } from "lucide-react"
+import { usePropertiesStatus } from "@/lib/hooks/useDashboard"
+import { contractsService } from "@/lib/api/contracts"
+import { apiClient } from "@/lib/api/client"
 
-const properties = [
-  {
-    id: 1,
-    name: "Apartamento 101",
-    address: "Rua das Flores, 123 - Centro",
-    status: "occupied",
-    tenant: "Maria Silva",
-    rent: 2500,
-    nextPayment: "2025-01-15",
-  },
-  {
-    id: 2,
-    name: "Casa Jardins",
-    address: "Av. Principal, 456 - Jardins",
-    status: "occupied",
-    tenant: "João Santos",
-    rent: 3200,
-    nextPayment: "2025-01-10",
-  },
-  {
-    id: 3,
-    name: "Apartamento 205",
-    address: "Rua Nova, 789 - Vila Nova",
-    status: "vacant",
-    tenant: null,
-    rent: 1800,
-    nextPayment: null,
-  },
-  {
-    id: 4,
-    name: "Loja Centro",
-    address: "Rua Comercial, 321 - Centro",
-    status: "maintenance",
-    tenant: "Carlos Lima",
-    rent: 4500,
-    nextPayment: "2025-01-05",
-  },
-  {
-    id: 5,
-    name: "Apartamento 302",
-    address: "Av. Bela Vista, 654 - Bela Vista",
-    status: "occupied",
-    tenant: "Lucia Ferreira",
-    rent: 2200,
-    nextPayment: "2025-01-03",
-  },
-  {
-    id: 6,
-    name: "Sala Comercial",
-    address: "Ed. Business, 987 - Centro",
-    status: "vacant",
-    tenant: null,
-    rent: 3500,
-    nextPayment: null,
-  },
-]
+interface PropertyStatusGridProps {
+  period?: string
+}
 
 const statusConfig = {
   occupied: {
     label: "Ocupado",
     className: "bg-green-100 text-green-800",
-    color: "hsl(var(--status-occupied))",
   },
   vacant: {
     label: "Vago",
     className: "bg-gray-100 text-gray-800",
-    color: "hsl(var(--status-vacant))",
   },
   maintenance: {
     label: "Manutenção",
     className: "bg-orange-100 text-orange-800",
-    color: "hsl(var(--status-maintenance))",
   },
 }
 
-export function PropertyStatusGrid() {
+export function PropertyStatusGrid({ period = "6months" }: PropertyStatusGridProps) {
+  const { data, loading, error } = usePropertiesStatus(period)
+  const [enrichedProperties, setEnrichedProperties] = useState<any[]>([])
+
+  useEffect(() => {
+    const enrichProperties = async () => {
+      if (!data || !data.properties || data.properties.length === 0) {
+        setEnrichedProperties([])
+        return
+      }
+
+      const enriched = await Promise.all(
+        data.properties.map(async (property) => {
+          // Somente tenta enriquecer quando ocupada
+          if (property.status === 'occupied') {
+            try {
+              // Preferir busca direta por tenant_id do imóvel se existir
+              // @ts-ignore: backend retorna tenant_id no objeto de propriedade
+              if ((property as any).tenant_id) {
+                try {
+                  const tenant = await apiClient.get<{ id: number; name: string }>(`/tenants/${(property as any).tenant_id}/`)
+                  if (tenant?.name) return { ...property, tenant_name: tenant.name }
+                } catch (_) {}
+              }
+              const propertyId = property.id || property.property_id
+              const contracts = await contractsService.getContracts({ property_id: propertyId, status: 'active' })
+              if (Array.isArray(contracts) && contracts.length > 0) {
+                const activeContract: any = contracts[0]
+                let tenantName = 'Inquilino não identificado'
+                if (activeContract.tenant && activeContract.tenant.name) tenantName = activeContract.tenant.name
+                if (activeContract.tenant_name) tenantName = activeContract.tenant_name
+                return { ...property, tenant_name: tenantName }
+              }
+            } catch (err) {
+              console.error('Erro ao buscar contrato da propriedade:', err)
+            }
+          }
+          return property
+        })
+      )
+      setEnrichedProperties(enriched)
+    }
+
+    enrichProperties()
+  }, [data])
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-[200px]">
+        <RefreshCw className="h-6 w-6 animate-spin text-gray-400" />
+        <span className="ml-2 text-gray-600">Carregando propriedades...</span>
+      </div>
+    )
+  }
+
+  // Error state
+  if (error || !data?.properties) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[200px] text-gray-500">
+        <p className="text-sm">{error || "Nenhuma propriedade encontrada"}</p>
+      </div>
+    )
+  }
+
+  const propertiesToShow = enrichedProperties.length > 0 ? enrichedProperties : (data?.properties || [])
+
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-      {properties.map((property) => (
-        <Card key={property.id} className="hover:shadow-md transition-shadow">
-          <CardContent className="p-4">
-            <div className="flex items-start justify-between mb-3">
+    <div className="grid gap-3 md:grid-cols-3 lg:grid-cols-4">
+      {propertiesToShow.map((property) => (
+        <Card key={property.property_id} className="hover:shadow-md transition-shadow max-w-sm">
+          <CardContent className="p-3">
+            <div className="flex items-start justify-between mb-2">
               <div className="flex items-center space-x-2">
-                <Building2 className="h-5 w-5 text-muted-foreground" />
-                <h3 className="font-semibold text-sm">{property.name}</h3>
+                <Building2 className="h-3 w-3 text-muted-foreground" />
+                <h3 className="font-semibold text-xs">{property.property_name}</h3>
               </div>
               <Badge
                 variant="secondary"
-                className={statusConfig[property.status as keyof typeof statusConfig].className}
+                className={`text-[10px] px-1.5 py-0 ${statusConfig[property.status as keyof typeof statusConfig]?.className || ""}`}
               >
-                {statusConfig[property.status as keyof typeof statusConfig].label}
+                {statusConfig[property.status as keyof typeof statusConfig]?.label || property.status}
               </Badge>
             </div>
 
-            <div className="space-y-2 text-xs text-muted-foreground">
-              <div className="flex items-center space-x-1">
-                <MapPin className="h-3 w-3" />
-                <span>{property.address}</span>
-              </div>
-
-              {property.tenant && (
-                <div className="flex items-center space-x-1">
-                  <Users className="h-3 w-3" />
-                  <span>{property.tenant}</span>
+            <div className="space-y-1.5 text-xs">
+              {property.address && (
+                <div className="flex items-center space-x-1 text-muted-foreground">
+                  <MapPin className="h-3 w-3" />
+                  <span className="truncate">{property.address}</span>
                 </div>
               )}
 
-              <div className="flex justify-between items-center pt-2 border-t">
-                <span className="font-medium text-foreground">R$ {property.rent.toLocaleString("pt-BR")}</span>
-                {property.nextPayment && (
-                  <span className="text-xs">Próx: {new Date(property.nextPayment).toLocaleDateString("pt-BR")}</span>
-                )}
+              {property.status === 'occupied' && property.tenant_name && (
+                <div className="flex items-center space-x-1 text-muted-foreground">
+                  <User className="h-3 w-3" />
+                  <span>{property.tenant_name}</span>
+                </div>
+              )}
+
+              <div className="pt-2 border-t">
+                <span className="font-bold text-sm">R$ {(property.expected_monthly_revenue || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
               </div>
             </div>
           </CardContent>

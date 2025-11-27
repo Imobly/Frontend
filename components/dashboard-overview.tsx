@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Building2, Users, CreditCard, TrendingUp, AlertTriangle, Plus, Calendar, RefreshCw, Home } from "lucide-react"
+import { Building2, Users, CreditCard, TrendingUp, AlertTriangle, Calendar, RefreshCw } from "lucide-react"
 import { OverviewChart } from "@/components/overview-chart"
 import { RecentPayments } from "@/components/recent-payments"
 import { PropertyStatusGrid } from "@/components/property-status-grid"
@@ -14,7 +14,7 @@ import { EmptyState } from "@/components/ui/empty-state"
 
 export function DashboardOverview() {
   const [selectedPeriod, setSelectedPeriod] = useState("6months")
-  const { summary, loading, error, refetch } = useDashboard()
+  const { summary, stats, loading, error, refetch } = useDashboard(selectedPeriod)
 
   // Loading state
   if (loading) {
@@ -47,17 +47,6 @@ export function DashboardOverview() {
 
   return (
     <div className="space-y-8">
-      {/* Aviso de Dashboard em Desenvolvimento */}
-      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 flex items-start gap-3">
-        <AlertTriangle className="h-5 w-5 text-yellow-600 mt-0.5" />
-        <div className="flex-1">
-          <h3 className="font-semibold text-yellow-900">Dashboard em Desenvolvimento</h3>
-          <p className="text-sm text-yellow-700 mt-1">
-            Os dados do dashboard ainda não estão sendo carregados do backend. Os números exibidos são temporários.
-            Configure o endpoint <code className="bg-yellow-100 px-1 rounded">/api/v1/dashboard/summary</code> no backend para ver dados reais.
-          </p>
-        </div>
-      </div>
 
       {/* Header */}
       <div className="flex items-center justify-between">
@@ -79,72 +68,84 @@ export function DashboardOverview() {
               <SelectItem value="custom">Período customizado</SelectItem>
             </SelectContent>
           </Select>
-          <Button className="bg-blue-600 hover:bg-blue-700">
-            <Plus className="mr-2 h-4 w-4" />
-            Novo Imóvel
-          </Button>
         </div>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
+      <div className="grid gap-2 md:grid-cols-3 lg:grid-cols-6">
+        <Card className="max-w-[200px]">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total de Imóveis</CardTitle>
-            <Building2 className="h-4 w-4 text-gray-600" />
+            <CardTitle className="text-xs font-medium">Imóveis</CardTitle>
+            <Building2 className="h-3 w-3 text-gray-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{summary?.properties.total || 0}</div>
+            <div className="text-xl font-bold">{summary?.properties.total || 0}</div>
             <p className="text-xs text-gray-600">
               <span className="text-green-600">{summary?.properties.occupied_units || 0} ocupados</span>
             </p>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="max-w-[200px]">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Inquilinos Ativos</CardTitle>
-            <Users className="h-4 w-4 text-gray-600" />
+            <CardTitle className="text-xs font-medium">Inquilinos</CardTitle>
+            <Users className="h-3 w-3 text-gray-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{summary?.contracts.active || 0}</div>
-            <p className="text-xs text-gray-600">contratos ativos</p>
+            <div className="text-xl font-bold">{summary?.contracts.active || 0}</div>
+            <p className="text-xs text-gray-600">
+              <span className="text-blue-600">{summary?.contracts.active || 0} ativos</span>
+            </p>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="max-w-[200px]">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Receita Mensal</CardTitle>
-            <CreditCard className="h-4 w-4 text-gray-600" />
+            <CardTitle className="text-xs font-medium">Receitas</CardTitle>
+            <TrendingUp className="h-3 w-3 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
+            <div className="text-lg font-bold text-green-600">
               R$ {(summary?.financial.monthly_revenue || 0).toLocaleString("pt-BR")}
             </div>
-            <p className="text-xs text-green-600 flex items-center">
-              <TrendingUp className="mr-1 h-3 w-3" />
-              Receita mensal
-            </p>
+            <p className="text-xs text-gray-600">mensal</p>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="max-w-[200px]">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Pagamentos</CardTitle>
-            <AlertTriangle className="h-4 w-4 text-gray-600" />
+            <CardTitle className="text-xs font-medium">Despesas</CardTitle>
+            <CreditCard className="h-3 w-3 text-red-600" />
           </CardHeader>
           <CardContent>
-            <div className="flex items-center space-x-2">
-              <Badge className="bg-red-100 text-red-800 hover:bg-red-100">
-                {summary?.financial.overdue_payments || 0} em atraso
-              </Badge>
-              <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100">
-                {summary?.contracts.expiring_soon || 0} vencendo
-              </Badge>
+            <div className="text-lg font-bold text-red-600">
+              R$ {(summary?.financial.monthly_expenses || 0).toLocaleString("pt-BR")}
             </div>
-            <p className="text-xs text-gray-600 mt-2">
-              Taxa de ocupação: {((summary?.properties.occupancy_rate || 0) * 100).toFixed(1)}%
-            </p>
+            <p className="text-xs text-gray-600">mensal</p>
+          </CardContent>
+        </Card>
+
+        <Card className="max-w-[200px]">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-xs font-medium">Rec. Líquida</CardTitle>
+            <TrendingUp className="h-3 w-3 text-blue-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-lg font-bold text-blue-600">
+              R$ {((summary?.financial.monthly_revenue || 0) - (summary?.financial.monthly_expenses || 0)).toLocaleString("pt-BR")}
+            </div>
+            <p className="text-xs text-gray-600">mensal</p>
+          </CardContent>
+        </Card>
+
+        <Card className="max-w-[200px]">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-xs font-medium">Status</CardTitle>
+            <AlertTriangle className="h-3 w-3 text-gray-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-xl font-bold text-red-600">{summary?.financial.overdue_payments || 0}</div>
+            <p className="text-xs text-gray-600">em atraso</p>
           </CardContent>
         </Card>
       </div>
@@ -167,7 +168,7 @@ export function DashboardOverview() {
             <CardDescription>Últimas transações registradas</CardDescription>
           </CardHeader>
           <CardContent>
-            <RecentPayments />
+            <RecentPayments period={selectedPeriod} />
           </CardContent>
         </Card>
       </div>
@@ -179,7 +180,7 @@ export function DashboardOverview() {
           <CardDescription>Visão rápida do status de todos os imóveis</CardDescription>
         </CardHeader>
         <CardContent>
-          <PropertyStatusGrid />
+          <PropertyStatusGrid period={selectedPeriod} />
         </CardContent>
       </Card>
     </div>

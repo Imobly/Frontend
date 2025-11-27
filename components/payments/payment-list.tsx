@@ -3,8 +3,7 @@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { MoreHorizontal, Edit, Trash2, Eye, Building2, User, AlertTriangle } from "lucide-react"
+import { Edit, Trash2, Building2, User, AlertTriangle } from "lucide-react"
 import { Payment } from "@/lib/types/payment"
 import { useProperties } from "@/lib/hooks/useProperties"
 import { useTenants } from "@/lib/hooks/useTenants"
@@ -12,6 +11,7 @@ import { useTenants } from "@/lib/hooks/useTenants"
 interface PaymentListProps {
   payments: Payment[]
   onEdit: (payment: Payment) => void
+  onDelete?: (payment: Payment) => void
 }
 
 const statusConfig = {
@@ -21,7 +21,7 @@ const statusConfig = {
   partial: { label: "Parcial", className: "bg-blue-100 text-blue-800" },
 }
 
-export function PaymentList({ payments, onEdit }: PaymentListProps) {
+export function PaymentList({ payments, onEdit, onDelete }: PaymentListProps) {
   const { properties } = useProperties()
   const { tenants } = useTenants()
 
@@ -62,7 +62,7 @@ export function PaymentList({ payments, onEdit }: PaymentListProps) {
             <TableHead>Multa</TableHead>
             <TableHead>Total</TableHead>
             <TableHead>Status</TableHead>
-            <TableHead className="w-[50px]"></TableHead>
+            <TableHead className="w-[110px]">Ações</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -130,28 +130,19 @@ export function PaymentList({ payments, onEdit }: PaymentListProps) {
                   </Badge>
                 </TableCell>
                 <TableCell>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" className="h-8 w-8 p-0">
-                        <span className="sr-only">Abrir menu</span>
-                        <MoreHorizontal className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => onEdit(payment)}>
-                        <Edit className="mr-2 h-4 w-4" />
-                        Editar
-                      </DropdownMenuItem>
-                      <DropdownMenuItem>
-                        <Eye className="mr-2 h-4 w-4" />
-                        Visualizar
-                      </DropdownMenuItem>
-                      <DropdownMenuItem className="text-red-600">
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        Excluir
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" onClick={() => onEdit(payment)}>
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-red-600 hover:text-red-700"
+                      onClick={() => onDelete && onDelete(payment)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </TableCell>
               </TableRow>
             )

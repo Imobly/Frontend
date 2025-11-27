@@ -20,6 +20,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Upload, X, Plus, Edit, Building, Loader2 } from "lucide-react"
 import { Property } from "@/lib/types/property"
+import { useTenants } from "@/lib/hooks/useTenants"
 import { integerMask, currencyMask, currencyUnmask, areaMask, cepMask } from "@/lib/utils/masks"
 import { propertiesService } from "@/lib/api/properties"
 import { toast } from "sonner"
@@ -60,6 +61,7 @@ const initialProperty: Property = {
   images: [],
   units: [],
   isResidential: false,
+  tenant_id: null,
 }
 
 export function PropertyDialog({ open, onOpenChange, property, onSave }: PropertyDialogProps) {
@@ -70,6 +72,7 @@ export function PropertyDialog({ open, onOpenChange, property, onSave }: Propert
   const [uploadingImages, setUploadingImages] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
   const [dragActive, setDragActive] = useState(false)
+  const { tenants } = useTenants()
 
   useEffect(() => {
     if (property) {
@@ -327,6 +330,24 @@ export function PropertyDialog({ open, onOpenChange, property, onSave }: Propert
                       <SelectItem value="vacant">Vago</SelectItem>
                       <SelectItem value="occupied">Ocupado</SelectItem>
                       <SelectItem value="maintenance">Manutenção</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="tenant_id">Inquilino (opcional)</Label>
+                  <Select
+                    value={formData.tenant_id ? String(formData.tenant_id) : ""}
+                    onValueChange={(value) => handleInputChange("tenant_id", value ? parseInt(value) : null)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione um inquilino" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">Nenhum</SelectItem>
+                      {tenants.map(t => (
+                        <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
