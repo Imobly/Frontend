@@ -5,6 +5,7 @@
   "private": true,
   "scripts": {
     "build": "next build",
+    "postbuild": "cp -r .next/static .next/standalone/.next/ && cp -r public .next/standalone/",
     "dev": "next dev",
     "lint": "next lint",
     "start": "node .next/standalone/server.js"
