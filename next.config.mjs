@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   // Build configuration
-  output: 'standalone', // Required for Render deployment
+  output: 'export', // Static export for Static Site deployment
   
   // Image optimization
   images: {

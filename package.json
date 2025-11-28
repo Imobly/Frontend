@@ -4,10 +4,10 @@
   "description": "Sistema de Gestão Imobiliária - Frontend",
   "private": true,
   "scripts": {
-    "build": "next build && node scripts/postbuild.js",
+    "build": "next build",
     "dev": "next dev",
     "lint": "next lint",
-    "start": "node .next/standalone/server.js"
+    "start": "npx serve@latest out"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
