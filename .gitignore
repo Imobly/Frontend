@@ -16,10 +16,12 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files
-.env*
-!.env.example
+# env files (keep only .env.example in git)
+.env
 .env.local
+.env.docker
+.env.production
+!.env.example
 
 # vercel
 .vercel
