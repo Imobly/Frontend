@@ -11,6 +11,7 @@ import { PaymentList } from "./payment-list"
 import { PaymentCreate, PaymentResponse } from "@/lib/types/api"
 import { convertApiToPayment, Payment } from "@/lib/types/payment"
 import { EmptyState } from "@/components/ui/empty-state"
+import { currencyFormat } from "@/lib/utils"
 
 
 
@@ -142,7 +143,7 @@ export function PaymentsView() {
           <CardContent>
             <div className="text-2xl font-bold">{statusCounts.total}</div>
             <p className="text-xs text-muted-foreground">
-              R$ {totalAmount.toLocaleString("pt-BR")} no total
+              {currencyFormat(totalAmount)} no total
             </p>
           </CardContent>
         </Card>
@@ -155,7 +156,7 @@ export function PaymentsView() {
           <CardContent>
             <div className="text-2xl font-bold text-green-600">{statusCounts.paid}</div>
             <p className="text-xs text-muted-foreground">
-              R$ {paidAmount.toLocaleString("pt-BR")} recebidos
+              {currencyFormat(paidAmount)} recebidos
             </p>
           </CardContent>
         </Card>
@@ -181,7 +182,7 @@ export function PaymentsView() {
           <CardContent>
             <div className="text-2xl font-bold text-red-600">{statusCounts.overdue}</div>
             <p className="text-xs text-muted-foreground">
-              R$ {pendingAmount.toLocaleString("pt-BR")} pendentes
+              {currencyFormat(pendingAmount)} pendentes
             </p>
           </CardContent>
         </Card>

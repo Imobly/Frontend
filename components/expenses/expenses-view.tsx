@@ -8,6 +8,7 @@ import { Plus, Search, Grid3X3, List, TrendingUp, DollarSign, AlertTriangle, Edi
 import { useExpenses } from "@/lib/hooks/useExpenses"
 import { ExpenseDialog } from "@/components/expenses/expense-dialog"
 import { EmptyState } from "@/components/ui/empty-state"
+import { currencyFormat } from "@/lib/utils"
 
 export function ExpensesView() {
   const [searchTerm, setSearchTerm] = useState("")
@@ -127,7 +128,7 @@ export function ExpensesView() {
           <CardContent>
             <div className="text-2xl font-bold">{statusCounts.total}</div>
             <p className="text-xs text-muted-foreground">
-              R$ {totalAmount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+              {currencyFormat(totalAmount)}
             </p>
           </CardContent>
         </Card>
@@ -139,7 +140,7 @@ export function ExpensesView() {
           <CardContent>
             <div className="text-2xl font-bold">{statusCounts.paid}</div>
             <p className="text-xs text-muted-foreground">
-              R$ {paidAmount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+              {currencyFormat(paidAmount)}
             </p>
           </CardContent>
         </Card>
@@ -151,7 +152,7 @@ export function ExpensesView() {
           <CardContent>
             <div className="text-2xl font-bold">{statusCounts.pending}</div>
             <p className="text-xs text-muted-foreground">
-              R$ {pendingAmount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+              {currencyFormat(pendingAmount)}
             </p>
           </CardContent>
         </Card>
@@ -264,7 +265,7 @@ export function ExpensesView() {
                   <div className="space-y-1">
                     <p className="text-sm text-gray-600">Categoria: {expense.category}</p>
                     <p className="text-lg font-semibold">
-                      R$ {expense.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                      {currencyFormat(expense.amount)}
                     </p>
                     <p className="text-sm text-gray-500">
                       Data: {new Date(expense.date).toLocaleDateString('pt-BR')}

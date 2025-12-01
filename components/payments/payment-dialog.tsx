@@ -283,12 +283,16 @@ export function PaymentDialog({ open, onOpenChange, payment, onSave }: PaymentDi
         contract_id: formData.contract_id,
         due_date: formData.due_date,
         payment_date: formData.payment_date,
-        paid_amount: paidAmount,
+        amount: calculation?.base_amount ?? paidAmount,
+        fine_amount: calculation?.fine_amount ?? 0,
+        total_amount: calculation?.total_expected ?? paidAmount,
       }
       if (selectedContract.property_id) paymentData.property_id = selectedContract.property_id
       if (selectedContract.tenant_id) paymentData.tenant_id = selectedContract.tenant_id
       if (formData.payment_method) paymentData.payment_method = formData.payment_method
       if (formData.description && formData.description.trim() !== '') paymentData.description = formData.description.trim()
+      
+      console.log('📤 Sending payment data:', paymentData)
       await paymentsService.registerPayment(paymentData)
       toast.success('Pagamento registrado com sucesso!')
       onSave()
