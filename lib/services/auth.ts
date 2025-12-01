@@ -41,15 +41,16 @@ class AuthService {
     }
 
     // Implementação real da API
+    const formData = new URLSearchParams()
+    formData.append('username', credentials.username)
+    formData.append('password', credentials.password)
+
     const response = await fetch(`${AUTH_API_BASE_URL}/login`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
+        'Content-Type': 'application/x-www-form-urlencoded',
       },
-      body: JSON.stringify({
-        username: credentials.email, // A API aceita email no campo username
-        password: credentials.password,
-      }),
+      body: formData,
     });
 
     if (!response.ok) {
@@ -128,7 +129,7 @@ class AuthService {
       },
       body: JSON.stringify({
         email: userData.email,
-        username: userData.email.split('@')[0], // Gera username a partir do email
+        username: userData.username,
         full_name: userData.name,
         password: userData.password,
       }),
@@ -143,7 +144,7 @@ class AuthService {
     
     // Após o registro, faz login automático
     const loginResponse = await this.login({
-      email: userData.email,
+      username: userData.username,
       password: userData.password,
     });
     
