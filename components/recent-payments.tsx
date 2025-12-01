@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge"
 import { RefreshCw } from "lucide-react"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { usePayments } from "@/lib/hooks/usePayments"
+import { apiClient } from "@/lib/api/client"
 import { currencyFormat } from "@/lib/utils"
 
 interface RecentPaymentsProps {
@@ -18,13 +19,75 @@ const statusConfig = {
   overdue: { label: "Atrasado", className: "bg-red-100 text-red-800" },
 }
 
+interface EnrichedPayment {
+  id: number
+  total_amount: number
+  status: string
+  tenant_name: string
+  property_address: string
+}
+
 export function RecentPayments({ period = "6months" }: RecentPaymentsProps) {
-  const { payments, loading, error } = usePayments()
+  const { payments, loading: paymentsLoading } = usePayments()
+  const [enrichedPayments, setEnrichedPayments] = useState<EnrichedPayment[]>([])
+  const [loading, setLoading] = useState(true)
   
-  // Pegar apenas os 2 últimos pagamentos ordenados por data de criação
-  const recentPayments = [...payments]
-    .sort((a, b) => new Date(b.created_at || '').getTime() - new Date(a.created_at || '').getTime())
-    .slice(0, 2)
+  useEffect(() => {
+    const enrichPayments = async () => {
+      if (paymentsLoading) return
+      
+      try {
+        // Pegar apenas os 2 últimos pagamentos ordenados por data de criação
+        const recentPayments = [...payments]
+          .sort((a, b) => new Date(b.created_at || '').getTime() - new Date(a.created_at || '').getTime())
+          .slice(0, 2)
+        
+        // Buscar informações de inquilino e propriedade
+        const enriched = await Promise.all(
+          recentPayments.map(async (payment) => {
+            let tenant_name = 'Inquilino desconhecido'
+            let property_address = 'Endereço não disponível'
+            
+            try {
+              // Buscar inquilino
+              if (payment.tenant_id) {
+                const tenant = await apiClient.get<{ name: string }>(`/tenants/${payment.tenant_id}/`)
+                if (tenant?.name) tenant_name = tenant.name
+              }
+            } catch (e) {
+              console.error('Erro ao buscar inquilino:', e)
+            }
+            
+            try {
+              // Buscar propriedade
+              if (payment.property_id) {
+                const property = await apiClient.get<{ address: string }>(`/properties/${payment.property_id}/`)
+                if (property?.address) property_address = property.address
+              }
+            } catch (e) {
+              console.error('Erro ao buscar propriedade:', e)
+            }
+            
+            return {
+              id: payment.id,
+              total_amount: payment.total_amount,
+              status: payment.status,
+              tenant_name,
+              property_address
+            }
+          })
+        )
+        
+        setEnrichedPayments(enriched)
+      } catch (err) {
+        console.error('Erro ao enriquecer pagamentos:', err)
+      } finally {
+        setLoading(false)
+      }
+    }
+    
+    enrichPayments()
+  }, [payments, paymentsLoading])
 
   if (loading) {
     return (
@@ -35,10 +98,10 @@ export function RecentPayments({ period = "6months" }: RecentPaymentsProps) {
     )
   }
 
-  if (error || recentPayments.length === 0) {
+  if (enrichedPayments.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-[200px] text-gray-500">
-        <p className="text-sm">{error || "Nenhum pagamento recente"}</p>
+        <p className="text-sm">Nenhum pagamento recente</p>
       </div>
     )
   }
@@ -52,7 +115,7 @@ export function RecentPayments({ period = "6months" }: RecentPaymentsProps) {
 
   return (
     <div className="space-y-2">
-      {recentPayments.map((payment) => {
+      {enrichedPayments.map((payment) => {
         const initials = getInitials(payment.tenant_name)
         return (
           <div key={payment.id} className="flex items-center justify-between py-2 border-b last:border-0">
@@ -61,8 +124,8 @@ export function RecentPayments({ period = "6months" }: RecentPaymentsProps) {
                 <AvatarFallback>{initials}</AvatarFallback>
               </Avatar>
               <div className="min-w-0">
-                <p className="text-sm font-medium truncate">{payment.tenant_name || 'Inquilino desconhecido'}</p>
-                <p className="text-xs text-muted-foreground truncate">{payment.property_address || 'Endereço não disponível'}</p>
+                <p className="text-sm font-medium truncate">{payment.tenant_name}</p>
+                <p className="text-xs text-muted-foreground truncate">{payment.property_address}</p>
               </div>
             </div>
             <div className="flex items-center gap-3 pl-3">

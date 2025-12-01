@@ -21,8 +21,10 @@ export function DashboardOverview() {
   const { payments } = usePayments()
   const { expenses } = useExpenses()
   
-  // Calcular totais reais
-  const totalReceitas = payments.reduce((sum, payment) => sum + (payment.total_amount || 0), 0)
+  // Calcular totais reais - apenas pagamentos pagos para receitas
+  const totalReceitas = payments
+    .filter(p => p.status === 'paid')
+    .reduce((sum, payment) => sum + (payment.total_amount || 0), 0)
   const totalDespesas = expenses.reduce((sum, expense) => sum + (expense.amount || 0), 0)
   const receitaLiquida = totalReceitas - totalDespesas
   const pagamentosAtrasados = payments.filter(p => p.status === 'overdue').length
