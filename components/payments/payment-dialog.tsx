@@ -152,12 +152,16 @@ export function PaymentDialog({ open, onOpenChange, payment, onSave }: PaymentDi
         setCalculation(result)
       } catch (error) {
         console.error('Erro ao calcular pagamento:', error)
+        // Mesmo com erro, permite continuar
+        setCalculation(null)
       } finally {
         setIsCalculating(false)
       }
     }
 
-    calculate()
+    // Adiciona delay para evitar muitas requisições
+    const timer = setTimeout(calculate, 300)
+    return () => clearTimeout(timer)
   }, [formData.contract_id, formData.due_date, formData.payment_date])
 
   // Preenche automaticamente o valor pago com o total calculado se usuário não digitou nada
@@ -529,7 +533,7 @@ export function PaymentDialog({ open, onOpenChange, payment, onSave }: PaymentDi
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancelar
             </Button>
-            <Button type="submit" disabled={isLoading || isCalculating}>
+            <Button type="submit" disabled={isLoading}>
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />

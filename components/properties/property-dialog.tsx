@@ -134,11 +134,13 @@ export function PropertyDialog({ open, onOpenChange, property, onSave }: Propert
         (progress) => setUploadProgress(progress)
       )
 
-      // Atualizar images no formData
-      const newImages = result.uploaded_files.map(f => f.url)
+      // Recarregar propriedade atualizada do backend
+      const updatedProperty = await propertiesService.getProperty(property.id)
+      
+      // Atualizar formData com todas as imagens do backend
       setFormData(prev => ({
         ...prev,
-        images: [...prev.images, ...newImages]
+        images: updatedProperty.images || []
       }))
 
       toast.success(`${result.uploaded_files.length} imagem(ns) enviada(s) com sucesso!`)
