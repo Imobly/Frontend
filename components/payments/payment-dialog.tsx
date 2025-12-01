@@ -187,16 +187,11 @@ export function PaymentDialog({ open, onOpenChange, payment, onSave }: PaymentDi
     }
     
     const paidAmountValue = currencyUnmask(formData.paid_amount)
-    console.log('🔍 Paid amount validation:', {
-      raw: formData.paid_amount,
-      unmasked: paidAmountValue
-    })
     
     if (!formData.paid_amount || paidAmountValue <= 0) {
       errors.paid_amount = "Valor deve ser maior que zero"
     }
 
-    console.log('🔍 Validation errors:', errors)
     setValidationErrors(errors)
     return Object.keys(errors).length === 0
   }
@@ -227,16 +222,11 @@ export function PaymentDialog({ open, onOpenChange, payment, onSave }: PaymentDi
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    console.log('🔍 Form submitted:', formData)
-    console.log('🔍 Validation check...')
-    
     if (!validateForm()) {
-      console.log('❌ Validation failed:', validationErrors)
       toast.error('Preencha todos os campos obrigatórios')
       return
     }
     
-    console.log('✅ Validation passed')
     setIsLoading(true)
     
     try {
@@ -266,12 +256,9 @@ export function PaymentDialog({ open, onOpenChange, payment, onSave }: PaymentDi
 
       // Registro de novo pagamento
       if (!selectedContract) {
-        console.log('❌ Contrato não encontrado')
         toast.error('Erro: Contrato não encontrado. Selecione novamente.')
         return
       }
-      
-      console.log('📋 Selected contract:', selectedContract)
       
       try {
         const storedUser = localStorage.getItem('user')
@@ -279,15 +266,13 @@ export function PaymentDialog({ open, onOpenChange, payment, onSave }: PaymentDi
           const user = JSON.parse(storedUser)
           const contractUserId = Number(selectedContract.user_id)
           const currentUserId = Number(user?.id)
-          console.log('👤 User check:', { contractUserId, currentUserId })
           if (contractUserId && currentUserId && contractUserId !== currentUserId) {
-            console.log('❌ User mismatch - cannot register payment')
             toast.error('Este contrato pertence a outro usuário; não é possível registrar pagamento.')
             return
           }
         }
       } catch (e) {
-        console.log('⚠️ User check error:', e)
+        // Silenciar erro de user check
       }
       
       const paymentData: any = {
@@ -301,14 +286,11 @@ export function PaymentDialog({ open, onOpenChange, payment, onSave }: PaymentDi
       if (formData.payment_method) paymentData.payment_method = formData.payment_method
       if (formData.description && formData.description.trim() !== '') paymentData.description = formData.description.trim()
       
-      console.log('📤 Sending payment data:', paymentData)
       await paymentsService.registerPayment(paymentData)
       toast.success('Pagamento registrado com sucesso!')
       onSave()
       onOpenChange(false)
     } catch (error: any) {
-      console.log('❌ Payment registration error:', error)
-      console.log('❌ Error response:', error?.response?.data)
       toast.error(resolveErrorMessage(error))
     } finally {
       setIsLoading(false)

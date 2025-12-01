@@ -6,6 +6,7 @@ import { RefreshCw } from "lucide-react"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { dashboardService } from "@/lib/api/dashboard"
 import { RecentActivity } from "@/lib/types/api"
+import { currencyFormat } from "@/lib/utils"
 
 interface RecentPaymentsProps {
   period?: string
@@ -28,7 +29,7 @@ export function RecentPayments({ period = "6months" }: RecentPaymentsProps) {
       try {
         setLoading(true)
         setError(null)
-        const data = await dashboardService.getRecentActivity(5)
+        const data = await dashboardService.getRecentActivity(2)
         
         // Validar dados das atividades
         const validatedActivities = (data.activities || []).map(activity => ({
@@ -37,7 +38,6 @@ export function RecentPayments({ period = "6months" }: RecentPaymentsProps) {
           status: activity.status || 'pending'
         }))
         
-        console.log('📋 Dados de pagamentos recentes:', validatedActivities)
         setActivities(validatedActivities)
       } catch (err: any) {
         const errorMessage = err?.detail || "Erro ao carregar pagamentos recentes"
@@ -91,7 +91,7 @@ export function RecentPayments({ period = "6months" }: RecentPaymentsProps) {
               </div>
             </div>
             <div className="flex items-center gap-3 pl-3">
-              <p className="text-sm font-semibold whitespace-nowrap">R$ {(activity.amount || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+              <p className="text-sm font-semibold whitespace-nowrap">{currencyFormat(activity.amount || 0)}</p>
               <Badge
                 variant="secondary"
                 className={statusConfig[activity.status as keyof typeof statusConfig]?.className || "bg-gray-100 text-gray-800"}

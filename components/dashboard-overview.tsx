@@ -11,6 +11,7 @@ import { RecentPayments } from "@/components/recent-payments"
 import { PropertyStatusGrid } from "@/components/property-status-grid"
 import { useDashboard } from "@/lib/hooks/useDashboard"
 import { EmptyState } from "@/components/ui/empty-state"
+import { currencyFormat } from "@/lib/utils"
 
 export function DashboardOverview() {
   const [selectedPeriod, setSelectedPeriod] = useState("6months")
@@ -106,7 +107,7 @@ export function DashboardOverview() {
           </CardHeader>
           <CardContent>
             <div className="text-lg font-bold text-green-600">
-              R$ {(summary?.financial.monthly_revenue || 0).toLocaleString("pt-BR")}
+              {currencyFormat(summary?.financial.monthly_revenue || 0)}
             </div>
             <p className="text-xs text-gray-600">mensal</p>
           </CardContent>
@@ -119,7 +120,7 @@ export function DashboardOverview() {
           </CardHeader>
           <CardContent>
             <div className="text-lg font-bold text-red-600">
-              R$ {(summary?.financial.monthly_expenses || 0).toLocaleString("pt-BR")}
+              {currencyFormat(summary?.financial.monthly_expenses || 0)}
             </div>
             <p className="text-xs text-gray-600">mensal</p>
           </CardContent>
@@ -132,7 +133,7 @@ export function DashboardOverview() {
           </CardHeader>
           <CardContent>
             <div className="text-lg font-bold text-blue-600">
-              R$ {((summary?.financial.monthly_revenue || 0) - (summary?.financial.monthly_expenses || 0)).toLocaleString("pt-BR")}
+              {currencyFormat((summary?.financial.monthly_revenue || 0) - (summary?.financial.monthly_expenses || 0))}
             </div>
             <p className="text-xs text-gray-600">mensal</p>
           </CardContent>
