@@ -4,8 +4,7 @@ import { useState, useEffect } from "react"
 import { Badge } from "@/components/ui/badge"
 import { RefreshCw } from "lucide-react"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { dashboardService } from "@/lib/api/dashboard"
-import { RecentActivity } from "@/lib/types/api"
+import { usePayments } from "@/lib/hooks/usePayments"
 import { currencyFormat } from "@/lib/utils"
 
 interface RecentPaymentsProps {
@@ -20,36 +19,12 @@ const statusConfig = {
 }
 
 export function RecentPayments({ period = "6months" }: RecentPaymentsProps) {
-  const [activities, setActivities] = useState<RecentActivity[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    const fetchActivities = async () => {
-      try {
-        setLoading(true)
-        setError(null)
-        const data = await dashboardService.getRecentActivity(2)
-        
-        // Validar dados das atividades
-        const validatedActivities = (data.activities || []).map(activity => ({
-          ...activity,
-          amount: activity.amount || 0,
-          status: activity.status || 'pending'
-        }))
-        
-        setActivities(validatedActivities)
-      } catch (err: any) {
-        const errorMessage = err?.detail || "Erro ao carregar pagamentos recentes"
-        setError(errorMessage)
-        console.error("❌ Erro ao carregar atividades recentes:", err)
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchActivities()
-  }, [period])
+  const { payments, loading, error } = usePayments()
+  
+  // Pegar apenas os 2 últimos pagamentos ordenados por data de criação
+  const recentPayments = [...payments]
+    .sort((a, b) => new Date(b.created_at || '').getTime() - new Date(a.created_at || '').getTime())
+    .slice(0, 2)
 
   if (loading) {
     return (
@@ -60,10 +35,10 @@ export function RecentPayments({ period = "6months" }: RecentPaymentsProps) {
     )
   }
 
-  if (error || activities.length === 0) {
+  if (error || recentPayments.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-[200px] text-gray-500">
-        <p className="text-sm">{error || "Nenhuma atividade recente"}</p>
+        <p className="text-sm">{error || "Nenhum pagamento recente"}</p>
       </div>
     )
   }
@@ -77,26 +52,26 @@ export function RecentPayments({ period = "6months" }: RecentPaymentsProps) {
 
   return (
     <div className="space-y-2">
-      {activities.map((activity) => {
-        const initials = getInitials(activity.tenant_name)
+      {recentPayments.map((payment) => {
+        const initials = getInitials(payment.tenant_name)
         return (
-          <div key={activity.id} className="flex items-center justify-between py-2 border-b last:border-0">
+          <div key={payment.id} className="flex items-center justify-between py-2 border-b last:border-0">
             <div className="flex items-start gap-3 min-w-0">
               <Avatar className="h-9 w-9 text-xs font-semibold bg-muted">
                 <AvatarFallback>{initials}</AvatarFallback>
               </Avatar>
               <div className="min-w-0">
-                <p className="text-sm font-medium truncate">{activity.tenant_name || 'Inquilino desconhecido'}</p>
-                <p className="text-xs text-muted-foreground truncate">{activity.property_address || 'Endereço não disponível'}</p>
+                <p className="text-sm font-medium truncate">{payment.tenant_name || 'Inquilino desconhecido'}</p>
+                <p className="text-xs text-muted-foreground truncate">{payment.property_address || 'Endereço não disponível'}</p>
               </div>
             </div>
             <div className="flex items-center gap-3 pl-3">
-              <p className="text-sm font-semibold whitespace-nowrap">{currencyFormat(activity.amount || 0)}</p>
+              <p className="text-sm font-semibold whitespace-nowrap">{currencyFormat(payment.total_amount || 0)}</p>
               <Badge
                 variant="secondary"
-                className={statusConfig[activity.status as keyof typeof statusConfig]?.className || "bg-gray-100 text-gray-800"}
+                className={statusConfig[payment.status as keyof typeof statusConfig]?.className || "bg-gray-100 text-gray-800"}
               >
-                {statusConfig[activity.status as keyof typeof statusConfig]?.label || activity.status}
+                {statusConfig[payment.status as keyof typeof statusConfig]?.label || payment.status}
               </Badge>
             </div>
           </div>

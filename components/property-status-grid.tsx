@@ -7,6 +7,7 @@ import { Building2, MapPin, User, RefreshCw } from "lucide-react"
 import { usePropertiesStatus } from "@/lib/hooks/useDashboard"
 import { contractsService } from "@/lib/api/contracts"
 import { apiClient } from "@/lib/api/client"
+import { currencyFormat } from "@/lib/utils"
 
 interface PropertyStatusGridProps {
   period?: string
@@ -128,7 +129,7 @@ export function PropertyStatusGrid({ period = "6months" }: PropertyStatusGridPro
               )}
 
               <div className="pt-2 border-t">
-                <span className="font-bold text-sm">R$ {(property.expected_monthly_revenue || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
+                <span className="font-bold text-sm">{currencyFormat(property.expected_monthly_revenue || 0)}</span>
               </div>
             </div>
           </CardContent>
