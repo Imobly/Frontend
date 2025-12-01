@@ -185,10 +185,18 @@ export function PaymentDialog({ open, onOpenChange, payment, onSave }: PaymentDi
     if (!formData.payment_date) {
       errors.payment_date = "Data de pagamento é obrigatória"
     }
-    if (!formData.paid_amount || currencyUnmask(formData.paid_amount) <= 0) {
+    
+    const paidAmountValue = currencyUnmask(formData.paid_amount)
+    console.log('🔍 Paid amount validation:', {
+      raw: formData.paid_amount,
+      unmasked: paidAmountValue
+    })
+    
+    if (!formData.paid_amount || paidAmountValue <= 0) {
       errors.paid_amount = "Valor deve ser maior que zero"
     }
 
+    console.log('🔍 Validation errors:', errors)
     setValidationErrors(errors)
     return Object.keys(errors).length === 0
   }
@@ -218,11 +226,19 @@ export function PaymentDialog({ open, onOpenChange, payment, onSave }: PaymentDi
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    
+    console.log('🔍 Form submitted:', formData)
+    console.log('🔍 Validation check...')
+    
     if (!validateForm()) {
+      console.log('❌ Validation failed:', validationErrors)
       toast.error('Preencha todos os campos obrigatórios')
       return
     }
+    
+    console.log('✅ Validation passed')
     setIsLoading(true)
+    
     try {
       const paidAmount = currencyUnmask(formData.paid_amount)
       // Edição de pagamento existente
