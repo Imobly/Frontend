@@ -266,19 +266,28 @@ export function PaymentDialog({ open, onOpenChange, payment, onSave }: PaymentDi
 
       // Registro de novo pagamento
       if (!selectedContract) {
+        console.log('❌ Contrato não encontrado')
         toast.error('Erro: Contrato não encontrado. Selecione novamente.')
         return
       }
+      
+      console.log('📋 Selected contract:', selectedContract)
+      
       try {
         const storedUser = localStorage.getItem('user')
         if (storedUser) {
           const user = JSON.parse(storedUser)
+          console.log('👤 User check:', { contractUserId: selectedContract.user_id, currentUserId: user?.id })
           if (selectedContract.user_id && user?.id && selectedContract.user_id !== user.id) {
+            console.log('❌ User mismatch - cannot register payment')
             toast.error('Este contrato pertence a outro usuário; não é possível registrar pagamento.')
             return
           }
         }
-      } catch {}
+      } catch (e) {
+        console.log('⚠️ User check error:', e)
+      }
+      
       const paymentData: any = {
         contract_id: formData.contract_id,
         due_date: formData.due_date,
