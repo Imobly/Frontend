@@ -294,9 +294,7 @@ export function PaymentDialog({ open, onOpenChange, payment, onSave }: PaymentDi
         contract_id: formData.contract_id,
         due_date: formData.due_date,
         payment_date: formData.payment_date,
-        amount: calculation?.base_amount ?? paidAmount,
-        fine_amount: calculation?.fine_amount ?? 0,
-        total_amount: calculation?.total_expected ?? paidAmount,
+        paid_amount: paidAmount,
       }
       if (selectedContract.property_id) paymentData.property_id = selectedContract.property_id
       if (selectedContract.tenant_id) paymentData.tenant_id = selectedContract.tenant_id
