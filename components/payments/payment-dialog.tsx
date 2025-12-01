@@ -277,8 +277,10 @@ export function PaymentDialog({ open, onOpenChange, payment, onSave }: PaymentDi
         const storedUser = localStorage.getItem('user')
         if (storedUser) {
           const user = JSON.parse(storedUser)
-          console.log('👤 User check:', { contractUserId: selectedContract.user_id, currentUserId: user?.id })
-          if (selectedContract.user_id && user?.id && selectedContract.user_id !== user.id) {
+          const contractUserId = Number(selectedContract.user_id)
+          const currentUserId = Number(user?.id)
+          console.log('👤 User check:', { contractUserId, currentUserId })
+          if (contractUserId && currentUserId && contractUserId !== currentUserId) {
             console.log('❌ User mismatch - cannot register payment')
             toast.error('Este contrato pertence a outro usuário; não é possível registrar pagamento.')
             return
