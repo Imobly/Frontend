@@ -309,6 +309,8 @@ export function PaymentDialog({ open, onOpenChange, payment, onSave }: PaymentDi
       onSave()
       onOpenChange(false)
     } catch (error: any) {
+      console.log('❌ Payment registration error:', error)
+      console.log('❌ Error response:', error?.response?.data)
       toast.error(resolveErrorMessage(error))
     } finally {
       setIsLoading(false)
