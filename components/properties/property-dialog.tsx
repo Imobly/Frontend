@@ -337,14 +337,14 @@ export function PropertyDialog({ open, onOpenChange, property, onSave }: Propert
                 <div className="space-y-2">
                   <Label htmlFor="tenant_id">Inquilino (opcional)</Label>
                   <Select
-                    value={formData.tenant_id ? String(formData.tenant_id) : ""}
-                    onValueChange={(value) => handleInputChange("tenant_id", value ? parseInt(value) : null)}
+                    value={formData.tenant_id ? String(formData.tenant_id) : undefined}
+                    onValueChange={(value) => handleInputChange("tenant_id", value === "none" ? null : parseInt(value))}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione um inquilino" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Nenhum</SelectItem>
+                      <SelectItem value="none">Nenhum</SelectItem>
                       {tenants.map(t => (
                         <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>
                       ))}
