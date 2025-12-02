@@ -151,8 +151,7 @@ export function PaymentDialog({ open, onOpenChange, payment, onSave }: PaymentDi
         })
         setCalculation(result)
       } catch (error) {
-        console.error('Erro ao calcular pagamento:', error)
-        // Mesmo com erro, permite continuar
+        console.error('Erro ao calcular pagamento:', error)        // Mesmo com erro, permite continuar
         setCalculation(null)
       } finally {
         setIsCalculating(false)
