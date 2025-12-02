@@ -18,8 +18,8 @@ import { currencyFormat } from "@/lib/utils"
 export function DashboardOverview() {
   const [selectedPeriod, setSelectedPeriod] = useState("6months")
   const { summary, stats, loading, error, refetch } = useDashboard(selectedPeriod)
-  const { payments, loading: paymentsLoading } = usePayments()
-  const { expenses, loading: expensesLoading } = useExpenses()
+  const { payments, loading: paymentsLoading, error: paymentsError } = usePayments({})
+  const { expenses, loading: expensesLoading, error: expensesError } = useExpenses({})
   
   // Calcular totais reais - TODOS os pagamentos (independente do status)
   const totalReceitas = payments.reduce((sum, payment) => sum + (payment.total_amount || 0), 0)
@@ -29,6 +29,10 @@ export function DashboardOverview() {
   
   // Debug temporário
   console.log('📊 Dashboard Debug:', {
+    paymentsLoading,
+    paymentsError,
+    expensesLoading,
+    expensesError,
     totalPayments: payments.length,
     totalReceitas,
     payments: payments.map(p => ({ id: p.id, total_amount: p.total_amount, status: p.status })),
