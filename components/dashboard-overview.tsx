@@ -18,17 +18,26 @@ import { currencyFormat } from "@/lib/utils"
 export function DashboardOverview() {
   const [selectedPeriod, setSelectedPeriod] = useState("6months")
   const { summary, stats, loading, error, refetch } = useDashboard(selectedPeriod)
-  const { payments } = usePayments()
-  const { expenses } = useExpenses()
+  const { payments, loading: paymentsLoading } = usePayments()
+  const { expenses, loading: expensesLoading } = useExpenses()
   
   // Calcular totais reais - TODOS os pagamentos (independente do status)
   const totalReceitas = payments.reduce((sum, payment) => sum + (payment.total_amount || 0), 0)
   const totalDespesas = expenses.reduce((sum, expense) => sum + (expense.amount || 0), 0)
   const receitaLiquida = totalReceitas - totalDespesas
   const pagamentosAtrasados = payments.filter(p => p.status === 'overdue').length
+  
+  // Debug temporário
+  console.log('📊 Dashboard Debug:', {
+    totalPayments: payments.length,
+    totalReceitas,
+    payments: payments.map(p => ({ id: p.id, total_amount: p.total_amount, status: p.status })),
+    totalExpenses: expenses.length,
+    totalDespesas
+  })
 
   // Loading state
-  if (loading) {
+  if (loading || paymentsLoading || expensesLoading) {
     return (
       <div className="flex flex-col items-center justify-center h-96 space-y-4">
         <RefreshCw className="h-8 w-8 animate-spin text-blue-600" />
