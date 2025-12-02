@@ -21,24 +21,13 @@ export function DashboardOverview() {
   const { payments, loading: paymentsLoading, error: paymentsError } = usePayments({})
   const { expenses, loading: expensesLoading, error: expensesError } = useExpenses({})
   
-  // Calcular totais reais - TODOS os pagamentos (independente do status)
-  const totalReceitas = payments.reduce((sum, payment) => sum + (payment.total_amount || 0), 0)
+  // Calcular totais reais - apenas pagamentos com status 'paid'
+  const totalReceitas = payments
+    .filter(p => p.status === 'paid')
+    .reduce((sum, payment) => sum + (payment.total_amount || 0), 0)
   const totalDespesas = expenses.reduce((sum, expense) => sum + (expense.amount || 0), 0)
   const receitaLiquida = totalReceitas - totalDespesas
   const pagamentosAtrasados = payments.filter(p => p.status === 'overdue').length
-  
-  // Debug temporário
-  console.log('📊 Dashboard Debug:', {
-    paymentsLoading,
-    paymentsError,
-    expensesLoading,
-    expensesError,
-    totalPayments: payments.length,
-    totalReceitas,
-    payments: payments.map(p => ({ id: p.id, total_amount: p.total_amount, status: p.status })),
-    totalExpenses: expenses.length,
-    totalDespesas
-  })
 
   // Loading state
   if (loading || paymentsLoading || expensesLoading) {
