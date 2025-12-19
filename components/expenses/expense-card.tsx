@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Edit, Trash2, FileText, Calendar, MapPin, User, AlertTriangle } from "lucide-react"
+import { useProperties } from "@/lib/hooks/useProperties"
 
 interface Expense {
   id: string
@@ -27,6 +28,12 @@ interface ExpenseCardProps {
 }
 
 export function ExpenseCard({ expenses, onEdit, onDelete }: ExpenseCardProps) {
+  const { properties } = useProperties()
+  const getPropertyInfo = (expense: Expense) => {
+    if (expense.property) return expense.property
+    const found = properties.find(p => p.id === (expense as any).property_id)
+    return found ? `${found.name} — ${found.address}` : (expense as any).property_id ? `Propriedade #${(expense as any).property_id}` : "—"
+  }
   const getStatusColor = (status: string) => {
     switch (status) {
       case "paid":
@@ -110,7 +117,7 @@ export function ExpenseCard({ expenses, onEdit, onDelete }: ExpenseCardProps) {
 
           <CardContent className="space-y-4">
             <div className="text-2xl font-bold text-foreground">
-              R$ {expense.amount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+              {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(expense.amount)}
             </div>
 
             <div className="space-y-2 text-sm">
@@ -121,7 +128,7 @@ export function ExpenseCard({ expenses, onEdit, onDelete }: ExpenseCardProps) {
 
               <div className="flex items-center gap-2 text-muted-foreground">
                 <MapPin className="h-4 w-4" />
-                {expense.property}
+                {getPropertyInfo(expense)}
               </div>
 
               {expense.vendor && (

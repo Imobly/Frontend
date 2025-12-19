@@ -27,6 +27,7 @@ interface Tenant {
 interface TenantListProps {
   tenants: Tenant[]
   onEdit: (tenant: Tenant) => void
+  onDelete?: (id: number) => void
 }
 
 const statusConfig = {
@@ -34,7 +35,7 @@ const statusConfig = {
   inactive: { label: "Inativo", className: "bg-gray-100 text-gray-800" },
 }
 
-export function TenantList({ tenants, onEdit }: TenantListProps) {
+export function TenantList({ tenants, onEdit, onDelete }: TenantListProps) {
   const getInitials = (name: string) => {
     return name
       .split(" ")
@@ -124,7 +125,7 @@ export function TenantList({ tenants, onEdit }: TenantListProps) {
                       <Eye className="mr-2 h-4 w-4" />
                       Visualizar
                     </DropdownMenuItem>
-                    <DropdownMenuItem className="text-red-600">
+                    <DropdownMenuItem className="text-red-600" onClick={() => onDelete && onDelete(tenant.id)}>
                       <Trash2 className="mr-2 h-4 w-4" />
                       Excluir
                     </DropdownMenuItem>

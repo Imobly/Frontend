@@ -13,6 +13,7 @@ import { PropertyDialog } from "@/components/properties/property-dialog"
 import { PropertyFilters } from "@/components/properties/property-filters"
 import { useProperties } from "@/lib/hooks/useProperties"
 import { Property, convertApiToProperty, convertPropertyToApi } from "@/lib/types/property"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 
 export function PropertiesView() {
   const { properties, loading, error, refetch, createProperty, updateProperty, deleteProperty } = useProperties()
@@ -22,6 +23,8 @@ export function PropertiesView() {
   const [showDialog, setShowDialog] = useState(false)
   const [selectedProperty, setSelectedProperty] = useState<Property | null>(null)
   const [showFilters, setShowFilters] = useState(false)
+  const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null)
+  const [confirmDeleteName, setConfirmDeleteName] = useState<string | null>(null)
 
   // Mostrar loading
   if (loading) {
@@ -112,8 +115,17 @@ export function PropertiesView() {
   }
 
   const handleDelete = async (id: number) => {
+    const prop = localProperties.find(p => p.id === id)
+    setConfirmDeleteId(id)
+    setConfirmDeleteName(prop?.name || null)
+  }
+
+  const confirmDelete = async () => {
+    if (!confirmDeleteId) return
     try {
-      await deleteProperty(id)
+      await deleteProperty(confirmDeleteId)
+      setConfirmDeleteId(null)
+      setConfirmDeleteName(null)
       refetch()
     } catch (error) {
       console.error("Erro ao deletar propriedade:", error)
@@ -283,6 +295,30 @@ export function PropertiesView() {
         property={selectedProperty}
         onSave={handleSave}
       />
+
+      {/* Confirm Delete Dialog */}
+      <Dialog open={confirmDeleteId !== null} onOpenChange={(open) => {
+        if (!open) {
+          setConfirmDeleteId(null)
+          setConfirmDeleteName(null)
+        }
+      }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Excluir imóvel</DialogTitle>
+            <DialogDescription>
+              Tem certeza que deseja excluir {confirmDeleteName ? `"${confirmDeleteName}"` : "este imóvel"}? Esta ação não pode ser desfeita.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => {
+              setConfirmDeleteId(null)
+              setConfirmDeleteName(null)
+            }}>Cancelar</Button>
+            <Button variant="destructive" onClick={confirmDelete}>Excluir</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

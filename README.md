@@ -1,142 +1,122 @@
-# Imobly - Sistema de Gestão Imobiliária (Frontend)
+# Imobly - Frontend
 
-Sistema moderno de gestão imobiliária desenvolvido com Next.js 14, TypeScript e TailwindCSS.
+Sistema web de gestão imobiliária desenvolvido com Next.js 14, TypeScript e TailwindCSS.
+
+> **Parte da Organização Imobly**: Este repositório é o frontend da aplicação. Outros componentes do sistema:
+> - **[Backend](https://github.com/Imobly/backend)**: API REST principal (FastAPI)
+> - **[Auth API](https://github.com/Imobly/auth-api)**: Serviço de autenticação
+> - **[Documentação](https://github.com/Imobly/docs)**: Documentação completa do sistema
 
 ## 🚀 Tecnologias
 
-- **Framework**: Next.js 14.2.32 (App Router)
+- **Framework**: Next.js 14 (App Router)
 - **Linguagem**: TypeScript 5
-- **Estilização**: TailwindCSS 4
-- **UI Components**: Radix UI + shadcn/ui
-- **Ícones**: Lucide React
-- **Gráficos**: Recharts
-- **Formulários**: React Hook Form + Zod
+- **Estilização**: TailwindCSS + Radix UI
 - **HTTP Client**: Axios
-- **Containerização**: Docker
+- **Formulários**: React Hook Form + Zod
+- **Gráficos**: Recharts
 
 ## 📋 Pré-requisitos
 
-- Node.js 18+ 
-- pnpm (recomendado) ou npm
-- Docker & Docker Compose (para deploy)
+Para rodar este projeto localmente, você precisa:
 
-## 🔧 Instalação
+- **Node.js** 18 ou superior
+- **pnpm** (gerenciador de pacotes)
+- **Backend** rodando em `localhost:8000` ([ver repositório](https://github.com/Imobly/backend))
+- **Auth API** rodando em `localhost:8001` ([ver repositório](https://github.com/Imobly/auth-api))
 
-### Desenvolvimento Local
+## 🚀 Como Rodar Localmente
 
-1. Clone o repositório:
+### 1. Clone o repositório
+
 ```bash
 git clone https://github.com/Imobly/Frontend.git
 cd Frontend
 ```
 
-2. Instale as dependências:
+### 2. Instale as dependências
+
 ```bash
 pnpm install
 ```
 
-3. Configure as variáveis de ambiente:
+### 3. Configure as variáveis de ambiente
+
+Copie o arquivo de exemplo e configure:
+
 ```bash
 cp .env.example .env.local
 ```
 
-Edite `.env.local` com suas configurações:
+O arquivo `.env.local` deve conter:
+
 ```env
 NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
-NEXT_PUBLIC_AUTH_API_URL=http://localhost:8001
+NEXT_PUBLIC_AUTH_API_URL=http://localhost:8001/api/v1/auth
 NEXT_PUBLIC_APP_URL=http://localhost:3000
+NEXT_PUBLIC_APP_NAME=Imobly
+NEXT_PUBLIC_APP_VERSION=1.0.0
+NODE_ENV=development
 ```
 
-4. Execute o servidor de desenvolvimento:
+### 4. Inicie os serviços backend
+
+**Importante**: O frontend depende dos serviços backend para funcionar.
+
+```bash
+# Em um terminal separado, inicie o Backend (porta 8000)
+cd ../backend
+# Siga as instruções do README do backend
+
+# Em outro terminal, inicie a Auth API (porta 8001)
+cd ../auth-api
+# Siga as instruções do README da auth-api
+```
+
+### 5. Execute o servidor de desenvolvimento
+
 ```bash
 pnpm dev
 ```
 
-Acesse: http://localhost:3000
+O frontend estará disponível em: **http://localhost:3000**
 
-### Deploy com Docker
+### 6. Credenciais de teste
 
-1. Build da imagem:
-```bash
-docker compose build
-```
-
-2. Execute o container:
-```bash
-docker compose up -d
-```
-
-O frontend estará disponível em: http://localhost:3000
+Após criar um usuário via `/register`, você pode fazer login com:
+- **Username ou Email**: seu_usuario
+- **Senha**: sua_senha
 
 ## 🏗️ Estrutura do Projeto
 
 ```
 Frontend/
 ├── app/                    # App Router (Next.js 14)
-│   ├── login/             # Página de autenticação
+│   ├── login/             # Autenticação
 │   ├── dashboard/         # Dashboard principal
 │   ├── properties/        # Gestão de propriedades
 │   ├── tenants/           # Gestão de inquilinos
 │   ├── payments/          # Gestão de pagamentos
-│   ├── expenses/          # Gestão de despesas
-│   ├── notifications/     # Central de notificações
-│   └── layout.tsx         # Layout raiz com AuthProvider
+│   └── expenses/          # Gestão de despesas
 ├── components/            # Componentes React
 │   ├── auth/             # Componentes de autenticação
-│   ├── ui/               # Componentes UI (shadcn)
-│   ├── properties/       # Componentes de propriedades
-│   ├── tenants/          # Componentes de inquilinos
-│   ├── payments/         # Componentes de pagamentos
-│   └── expenses/         # Componentes de despesas
+│   ├── ui/               # Componentes UI (shadcn/ui)
+│   └── [feature]/        # Componentes por funcionalidade
 ├── lib/
-│   ├── api/              # Serviços da API (axios)
-│   ├── contexts/         # React Contexts
-│   ├── hooks/            # Custom Hooks
-│   ├── services/         # Serviços de negócio
-│   └── types/            # Definições TypeScript
-├── public/               # Arquivos estáticos
-├── Dockerfile            # Build para produção
-├── docker-compose.yml    # Orquestração Docker
-└── next.config.mjs       # Configuração Next.js
+│   ├── api/              # Serviços da API
+│   ├── hooks/            # Custom React Hooks
+│   └── types/            # TypeScript types
+└── public/               # Arquivos estáticos
 ```
-
-## 🔐 Autenticação
-
-O sistema utiliza JWT (JSON Web Tokens) para autenticação:
-
-- **Auth API**: Serviço separado em `http://localhost:8001`
-- **Endpoints**:
-  - `POST /api/v1/auth/register` - Registro de usuário
-  - `POST /api/v1/auth/login` - Login
-  - `GET /api/v1/auth/me` - Dados do usuário atual
-  - `PUT /api/v1/auth/me` - Atualizar perfil
-  - `POST /api/v1/auth/change-password` - Alterar senha
-
-### Fluxo de Autenticação
-
-1. Usuário faz login via `/login`
-2. Token JWT é armazenado no `localStorage`
-3. `AuthProvider` gerencia o estado global do usuário
-4. `ProtectedRoute` protege rotas que requerem autenticação
-5. Token é anexado automaticamente nas requisições via `getAuthHeaders()`
 
 ## 📡 Integração com Backend
 
-### API Principal (porta 8000)
+O frontend se comunica com dois serviços:
 
-Serviços disponíveis em `lib/api/`:
+- **Backend API** (`localhost:8000`): Operações CRUD (propriedades, inquilinos, pagamentos, etc)
+- **Auth API** (`localhost:8001`): Autenticação e gerenciamento de usuários
 
-- **Properties**: Gestão de propriedades
-- **Tenants**: Gestão de inquilinos
-- **Payments**: Gestão de pagamentos
-- **Expenses**: Gestão de despesas
-- **Contracts**: Gestão de contratos
-- **Dashboard**: Dados agregados e estatísticas
-- **Notifications**: Central de notificações
-
-### Custom Hooks
-
-Hooks React para facilitar o uso da API:
+### Custom Hooks Disponíveis
 
 ```typescript
 import { useProperties } from '@/lib/hooks/useProperties'
@@ -145,163 +125,63 @@ import { usePayments } from '@/lib/hooks/usePayments'
 import { useDashboard } from '@/lib/hooks/useDashboard'
 ```
 
-Exemplo de uso:
-```typescript
-const { properties, loading, error, refetch } = useProperties({ status: 'occupied' })
-```
+## 🔐 Autenticação
 
-## 🎨 Componentes UI
+- Sistema de autenticação JWT
+- Token armazenado no `localStorage`
+- `AuthProvider` gerencia estado global do usuário
+- Rotas protegidas via `ProtectedRoute`
 
-Utilizamos **shadcn/ui** com componentes do **Radix UI**:
-
-- Button, Input, Label, Select
-- Dialog, Sheet, Dropdown Menu
-- Card, Badge, Avatar
-- Table, Tabs
-- Toast (Sonner)
-
-Componentes customizados podem ser adicionados em `components/ui/`.
-
-## 🐳 Docker
-
-### Dockerfile
-
-- Build multi-stage otimizado
-- Output `standalone` do Next.js
-- Tamanho reduzido da imagem
-- Copy de assets (.next/static e public)
-
-### docker-compose.yml
-
-```yaml
-services:
-  frontend:
-    build: .
-    ports:
-      - "3000:3000"
-    environment:
-      - NODE_ENV=production
-      - NEXT_PUBLIC_API_URL=http://host.docker.internal:8000
-    networks:
-      - imovel_network
-```
-
-### Comandos Úteis
+## 📝 Scripts Disponíveis
 
 ```bash
-# Build e iniciar
-docker compose up --build -d
-
-# Ver logs
-docker compose logs -f frontend
-
-# Parar containers
-docker compose down
-
-# Rebuild completo
-docker compose down && docker compose up --build -d
-```
-
-## 🔧 Scripts Disponíveis
-
-```bash
-# Desenvolvimento
-pnpm dev          # Servidor de desenvolvimento (porta 3000)
-
-# Build
+pnpm dev          # Servidor de desenvolvimento
 pnpm build        # Build de produção
-
-# Produção
-pnpm start        # Servidor de produção (após build)
-
-# Qualidade
-pnpm lint         # Executar ESLint
+pnpm start        # Servidor de produção
+pnpm lint         # Executar linter
 ```
 
-## ⚙️ Configurações Importantes
+## 🌐 Deploy em Produção
 
-### next.config.mjs
+**Produção ativa**:
+- Frontend: https://imobly.onrender.com
+- Backend: https://backend-non0.onrender.com
+- Auth API: https://auth-api-3zxk.onrender.com
 
-- **output: 'standalone'**: Necessário para Docker
-- **images.unoptimized**: Imagens sem otimização (para simplificar)
-- **eslint/typescript.ignoreBuildErrors**: Ignora erros durante build (dev only)
+Consulte a [documentação de deploy](https://github.com/Imobly/docs) para mais detalhes.
 
-### Variáveis de Ambiente
+## 🐛 Troubleshooting
 
-Todas as variáveis client-side devem ter prefixo `NEXT_PUBLIC_`:
+### Erro "Failed to fetch" no login
+✅ Verifique se o backend está rodando em `localhost:8000`  
+✅ Verifique se a auth API está rodando em `localhost:8001`  
+✅ Confirme as URLs no arquivo `.env.local`
 
-```typescript
-process.env.NEXT_PUBLIC_API_URL         // API principal
-process.env.NEXT_PUBLIC_AUTH_API_URL    // API de autenticação
-process.env.NEXT_PUBLIC_APP_URL         // URL do frontend
-```
-
-## 🚨 Troubleshooting
-
-### Container não inicia
-
-1. Verifique se a porta 3000 está livre:
+### Porta 3000 já está em uso
 ```bash
+# Windows
 netstat -ano | findstr :3000
+# Kill o processo se necessário
 ```
 
-2. Verifique logs do container:
-```bash
-docker compose logs frontend
-```
+## 📚 Documentação
 
-3. Rebuild sem cache:
-```bash
-docker compose build --no-cache
-```
+- **[API Reference](./docs/API_REFERENCE_FRONTEND.md)**: Referência completa da API
+- **[Payment Integration](./docs/FRONTEND_PAYMENT_INTEGRATION.md)**: Integração de pagamentos
+- **[Documentação Geral](https://github.com/Imobly/docs)**: Documentação completa do sistema
 
-### Erro CORS
+## 🤝 Contribuindo
 
-Certifique-se que o backend permite a origem do frontend:
-
-```python
-# Backend FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-```
-
-### Token não sendo enviado
-
-Verifique:
-1. Token está salvo no localStorage: `localStorage.getItem('access_token')`
-2. Header Authorization está sendo anexado em `lib/services/auth.ts`
-3. AuthProvider está envolvendo a aplicação em `app/layout.tsx`
-
-## 📝 Próximos Passos
-
-- [ ] Adicionar testes unitários (Jest/Testing Library)
-- [ ] Implementar testes E2E (Playwright/Cypress)
-- [ ] Configurar CI/CD (GitHub Actions)
-- [ ] Adicionar monitoramento de erros (Sentry)
-- [ ] Implementar PWA
-- [ ] Otimizar bundle size
-- [ ] Adicionar Service Worker para cache
-- [ ] Implementar WebSockets para notificações em tempo real
+1. Faça um fork do projeto
+2. Crie uma branch para sua feature (`git checkout -b feature/MinhaFeature`)
+3. Commit suas mudanças (`git commit -m 'Add: MinhaFeature'`)
+4. Push para a branch (`git push origin feature/MinhaFeature`)
+5. Abra um Pull Request
 
 ## 📄 Licença
 
-Este projeto é propriedade da Imobly.
+Este projeto é propriedade da **Imobly**.
 
-## 👥 Contribuindo
+---
 
-1. Fork o projeto
-2. Crie uma branch para sua feature (`git checkout -b feature/AmazingFeature`)
-3. Commit suas mudanças (`git commit -m 'Add some AmazingFeature'`)
-4. Push para a branch (`git push origin feature/AmazingFeature`)
-5. Abra um Pull Request
-
-## 📞 Suporte
-
-Para suporte, entre em contato com a equipe de desenvolvimento.
+**Desenvolvido pela equipe Imobly** • [Organização GitHub](https://github.com/Imobly)

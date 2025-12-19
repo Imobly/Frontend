@@ -9,8 +9,11 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [initialized, setInitialized] = useState(false);
 
   useEffect(() => {
+    if (initialized) return; // Evita reinicialização se já foi feita
+    
     const initializeAuth = async () => {
       try {
         // Verifica se há um usuário salvo no localStorage
@@ -19,21 +22,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setUser(storedUser);
         }
 
-        // Verifica se o token ainda é válido
-        if (authService.isAuthenticated()) {
+        // Verifica se o token ainda é válido apenas se não há usuário carregado
+        if (authService.isAuthenticated() && !storedUser) {
           const currentUser = await authService.getCurrentUser();
           setUser(currentUser);
         }
       } catch (error) {
         console.error('Error initializing auth:', error);
         authService.logout();
+        setUser(null);
       } finally {
         setIsLoading(false);
+        setInitialized(true);
       }
     };
 
     initializeAuth();
-  }, []);
+  }, [initialized]);
 
   const login = async (credentials: LoginRequest) => {
     setIsLoading(true);
