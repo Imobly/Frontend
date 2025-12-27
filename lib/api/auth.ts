@@ -4,8 +4,15 @@ import { LoginRequest, AuthResponse, User } from '@/lib/types/auth'
 const AUTH_BASE = process.env.NEXT_PUBLIC_AUTH_API_URL || 'http://localhost:8001/auth'
 
 export async function login(credentials: LoginRequest): Promise<User> {
+  // OAuth2 espera form data, não JSON
+  const formData = new URLSearchParams()
+  formData.append('username', credentials.username)
+  formData.append('password', credentials.password)
+
   // Faz login e obtém token
-  const tokenData = await apiClient.post<AuthResponse>(`${AUTH_BASE}/login`, credentials)
+  const tokenData = await apiClient.post<AuthResponse>(`${AUTH_BASE}/login`, formData, {
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+  })
   if (!tokenData.access_token) {
     throw { detail: 'Resposta de login inválida' }
   }

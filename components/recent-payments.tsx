@@ -4,8 +4,9 @@ import { useState, useEffect } from "react"
 import { Badge } from "@/components/ui/badge"
 import { RefreshCw } from "lucide-react"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { dashboardService } from "@/lib/api/dashboard"
-import { RecentActivity } from "@/lib/types/api"
+import { usePayments } from "@/lib/hooks/usePayments"
+import { apiClient } from "@/lib/api/client"
+import { currencyFormat } from "@/lib/utils"
 
 interface RecentPaymentsProps {
   period?: string
@@ -18,38 +19,75 @@ const statusConfig = {
   overdue: { label: "Atrasado", className: "bg-red-100 text-red-800" },
 }
 
-export function RecentPayments({ period = "6months" }: RecentPaymentsProps) {
-  const [activities, setActivities] = useState<RecentActivity[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+interface EnrichedPayment {
+  id: number
+  total_amount: number
+  status: string
+  tenant_name: string
+  property_address: string
+}
 
+export function RecentPayments({ period = "6months" }: RecentPaymentsProps) {
+  const { payments, loading: paymentsLoading } = usePayments()
+  const [enrichedPayments, setEnrichedPayments] = useState<EnrichedPayment[]>([])
+  const [loading, setLoading] = useState(true)
+  
   useEffect(() => {
-    const fetchActivities = async () => {
+    const enrichPayments = async () => {
+      if (paymentsLoading) return
+      
       try {
-        setLoading(true)
-        setError(null)
-        const data = await dashboardService.getRecentActivity(5)
+        // Pegar apenas os 2 últimos pagamentos ordenados por data de criação
+        const recentPayments = [...payments]
+          .sort((a, b) => new Date(b.created_at || '').getTime() - new Date(a.created_at || '').getTime())
+          .slice(0, 2)
         
-        // Validar dados das atividades
-        const validatedActivities = (data.activities || []).map(activity => ({
-          ...activity,
-          amount: activity.amount || 0,
-          status: activity.status || 'pending'
-        }))
+        // Buscar informações de inquilino e propriedade
+        const enriched = await Promise.all(
+          recentPayments.map(async (payment) => {
+            let tenant_name = 'Inquilino desconhecido'
+            let property_address = 'Endereço não disponível'
+            
+            try {
+              // Buscar inquilino
+              if (payment.tenant_id) {
+                const tenant = await apiClient.get<{ name: string }>(`/tenants/${payment.tenant_id}/`)
+                if (tenant?.name) tenant_name = tenant.name
+              }
+            } catch (e) {
+              console.error('Erro ao buscar inquilino:', e)
+            }
+            
+            try {
+              // Buscar propriedade
+              if (payment.property_id) {
+                const property = await apiClient.get<{ address: string }>(`/properties/${payment.property_id}/`)
+                if (property?.address) property_address = property.address
+              }
+            } catch (e) {
+              console.error('Erro ao buscar propriedade:', e)
+            }
+            
+            return {
+              id: payment.id,
+              total_amount: payment.total_amount,
+              status: payment.status,
+              tenant_name,
+              property_address
+            }
+          })
+        )
         
-        console.log('📋 Dados de pagamentos recentes:', validatedActivities)
-        setActivities(validatedActivities)
-      } catch (err: any) {
-        const errorMessage = err?.detail || "Erro ao carregar pagamentos recentes"
-        setError(errorMessage)
-        console.error("❌ Erro ao carregar atividades recentes:", err)
+        setEnrichedPayments(enriched)
+      } catch (err) {
+        console.error('Erro ao enriquecer pagamentos:', err)
       } finally {
         setLoading(false)
       }
     }
-
-    fetchActivities()
-  }, [period])
+    
+    enrichPayments()
+  }, [payments, paymentsLoading])
 
   if (loading) {
     return (
@@ -60,10 +98,10 @@ export function RecentPayments({ period = "6months" }: RecentPaymentsProps) {
     )
   }
 
-  if (error || activities.length === 0) {
+  if (enrichedPayments.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-[200px] text-gray-500">
-        <p className="text-sm">{error || "Nenhuma atividade recente"}</p>
+        <p className="text-sm">Nenhum pagamento recente</p>
       </div>
     )
   }
@@ -77,26 +115,26 @@ export function RecentPayments({ period = "6months" }: RecentPaymentsProps) {
 
   return (
     <div className="space-y-2">
-      {activities.map((activity) => {
-        const initials = getInitials(activity.tenant_name)
+      {enrichedPayments.map((payment) => {
+        const initials = getInitials(payment.tenant_name)
         return (
-          <div key={activity.id} className="flex items-center justify-between py-2 border-b last:border-0">
+          <div key={payment.id} className="flex items-center justify-between py-2 border-b last:border-0">
             <div className="flex items-start gap-3 min-w-0">
               <Avatar className="h-9 w-9 text-xs font-semibold bg-muted">
                 <AvatarFallback>{initials}</AvatarFallback>
               </Avatar>
               <div className="min-w-0">
-                <p className="text-sm font-medium truncate">{activity.tenant_name || 'Inquilino desconhecido'}</p>
-                <p className="text-xs text-muted-foreground truncate">{activity.property_address || 'Endereço não disponível'}</p>
+                <p className="text-sm font-medium truncate">{payment.tenant_name}</p>
+                <p className="text-xs text-muted-foreground truncate">{payment.property_address}</p>
               </div>
             </div>
             <div className="flex items-center gap-3 pl-3">
-              <p className="text-sm font-semibold whitespace-nowrap">R$ {(activity.amount || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+              <p className="text-sm font-semibold whitespace-nowrap">{currencyFormat(payment.total_amount || 0)}</p>
               <Badge
                 variant="secondary"
-                className={statusConfig[activity.status as keyof typeof statusConfig]?.className || "bg-gray-100 text-gray-800"}
+                className={statusConfig[payment.status as keyof typeof statusConfig]?.className || "bg-gray-100 text-gray-800"}
               >
-                {statusConfig[activity.status as keyof typeof statusConfig]?.label || activity.status}
+                {statusConfig[payment.status as keyof typeof statusConfig]?.label || payment.status}
               </Badge>
             </div>
           </div>

@@ -172,13 +172,16 @@ export function PaymentDialog({ open, onOpenChange, payment, onSave }: PaymentDi
         })
         setCalculation(result)
       } catch (error) {
-        console.error('Erro ao calcular pagamento:', error)
+        console.error('Erro ao calcular pagamento:', error)        // Mesmo com erro, permite continuar
+        setCalculation(null)
       } finally {
         setIsCalculating(false)
       }
     }
 
-    calculate()
+    // Adiciona delay para evitar muitas requisições
+    const timer = setTimeout(calculate, 300)
+    return () => clearTimeout(timer)
   }, [formData.contract_id, formData.due_date, formData.payment_date])
 
   // Preenche automaticamente o valor pago com o total calculado se usuário não digitou nada
@@ -202,7 +205,10 @@ export function PaymentDialog({ open, onOpenChange, payment, onSave }: PaymentDi
     if (!formData.payment_date) {
       errors.payment_date = "Data de pagamento é obrigatória"
     }
-    if (!formData.paid_amount || currencyUnmask(formData.paid_amount) <= 0) {
+    
+    const paidAmountValue = currencyUnmask(formData.paid_amount)
+    
+    if (!formData.paid_amount || paidAmountValue <= 0) {
       errors.paid_amount = "Valor deve ser maior que zero"
     }
 
@@ -235,11 +241,14 @@ export function PaymentDialog({ open, onOpenChange, payment, onSave }: PaymentDi
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    
     if (!validateForm()) {
       toast.error('Preencha todos os campos obrigatórios')
       return
     }
+    
     setIsLoading(true)
+    
     try {
       const paidAmount = currencyUnmask(formData.paid_amount)
       // Edição de pagamento existente
@@ -270,16 +279,22 @@ export function PaymentDialog({ open, onOpenChange, payment, onSave }: PaymentDi
         toast.error('Erro: Contrato não encontrado. Selecione novamente.')
         return
       }
+      
       try {
         const storedUser = localStorage.getItem('user')
         if (storedUser) {
           const user = JSON.parse(storedUser)
-          if (selectedContract.user_id && user?.id && selectedContract.user_id !== user.id) {
+          const contractUserId = Number(selectedContract.user_id)
+          const currentUserId = Number(user?.id)
+          if (contractUserId && currentUserId && contractUserId !== currentUserId) {
             toast.error('Este contrato pertence a outro usuário; não é possível registrar pagamento.')
             return
           }
         }
-      } catch {}
+      } catch (e) {
+        // Silenciar erro de user check
+      }
+      
       const paymentData: any = {
         contract_id: formData.contract_id,
         due_date: formData.due_date,
@@ -290,6 +305,7 @@ export function PaymentDialog({ open, onOpenChange, payment, onSave }: PaymentDi
       if (selectedContract.tenant_id) paymentData.tenant_id = selectedContract.tenant_id
       if (formData.payment_method) paymentData.payment_method = formData.payment_method
       if (formData.description && formData.description.trim() !== '') paymentData.description = formData.description.trim()
+      
       await paymentsService.registerPayment(paymentData)
       toast.success('Pagamento registrado com sucesso!')
       onSave()

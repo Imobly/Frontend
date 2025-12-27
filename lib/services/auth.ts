@@ -40,14 +40,14 @@ class AuthService {
       }
     }
 
-    // Implementação real da API
+    // Implementação real da API - envia JSON
     const response = await fetch(`${AUTH_API_BASE_URL}/login`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        username: credentials.username,
+        username: credentials.username, // Pode ser email ou username
         password: credentials.password,
       }),
     });

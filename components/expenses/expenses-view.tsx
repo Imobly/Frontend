@@ -8,12 +8,11 @@ import { Plus, Search, Grid3X3, List, TrendingUp, DollarSign, AlertTriangle, Edi
 import { useExpenses } from "@/lib/hooks/useExpenses"
 import { ExpenseDialog } from "@/components/expenses/expense-dialog"
 import { EmptyState } from "@/components/ui/empty-state"
-import { ExpenseList } from "@/components/expenses/expense-list"
-import { ExpenseCard } from "@/components/expenses/expense-card"
+import { currencyFormat } from "@/lib/utils"
 
 export function ExpensesView() {
   const [searchTerm, setSearchTerm] = useState("")
-  const [viewMode, setViewMode] = useState<"grid" | "list">("list")
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
   const [showDialog, setShowDialog] = useState(false)
   const [selectedExpense, setSelectedExpense] = useState<any | null>(null)
   
@@ -70,7 +69,6 @@ export function ExpensesView() {
   const pendingAmount = expenses
     .filter((e) => e.status === "pending")
     .reduce((sum, expense) => sum + expense.amount, 0)
-  const formatCurrency = (amount: number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(amount)
 
   const urgentExpenses = expenses.filter((e) => e.priority === "urgent").length
 
@@ -129,7 +127,9 @@ export function ExpensesView() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{statusCounts.total}</div>
-            <p className="text-xs text-muted-foreground">{formatCurrency(totalAmount)}</p>
+            <p className="text-xs text-muted-foreground">
+              {currencyFormat(totalAmount)}
+            </p>
           </CardContent>
         </Card>
         <Card>
@@ -139,7 +139,9 @@ export function ExpensesView() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{statusCounts.paid}</div>
-            <p className="text-xs text-muted-foreground">{formatCurrency(paidAmount)}</p>
+            <p className="text-xs text-muted-foreground">
+              {currencyFormat(paidAmount)}
+            </p>
           </CardContent>
         </Card>
         <Card>
@@ -149,7 +151,9 @@ export function ExpensesView() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{statusCounts.pending}</div>
-            <p className="text-xs text-muted-foreground">{formatCurrency(pendingAmount)}</p>
+            <p className="text-xs text-muted-foreground">
+              {currencyFormat(pendingAmount)}
+            </p>
           </CardContent>
         </Card>
         <Card>
@@ -212,11 +216,74 @@ export function ExpensesView() {
             <p className="text-gray-500">Nenhuma despesa encontrada com os filtros aplicados.</p>
           </div>
         ) : (
-          viewMode === "list" ? (
-            <ExpenseList expenses={filteredExpenses} onEdit={handleEdit} onDelete={handleDelete} />
-          ) : (
-            <ExpenseCard expenses={filteredExpenses} onEdit={handleEdit} onDelete={handleDelete} />
-          )
+          <div className={viewMode === "grid" ? "grid gap-4 md:grid-cols-2 lg:grid-cols-3" : "space-y-4"}>
+            {filteredExpenses.map((expense) => (
+              <Card key={expense.id} className="p-4">
+                <div className="space-y-3">
+                  <div className="flex justify-between items-start">
+                    <h3 className="font-medium">{expense.description}</h3>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleEdit(expense)}
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDelete(expense.id)}
+                        className="text-red-600 hover:text-red-700"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <span className={`px-2 py-1 rounded text-xs font-medium ${
+                      expense.status === 'paid' ? 'bg-green-100 text-green-800' :
+                      expense.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                      'bg-blue-100 text-blue-800'
+                    }`}>
+                      {expense.status === 'paid' ? 'Paga' :
+                       expense.status === 'pending' ? 'Pendente' : 'Agendada'}
+                    </span>
+                    {expense.priority && (
+                      <span className={`px-2 py-1 rounded text-xs font-medium ${
+                        expense.priority === 'urgent' ? 'bg-red-100 text-red-800' :
+                        expense.priority === 'high' ? 'bg-orange-100 text-orange-800' :
+                        expense.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+                        'bg-gray-100 text-gray-800'
+                      }`}>
+                        {expense.priority === 'urgent' ? 'Urgente' :
+                         expense.priority === 'high' ? 'Alta' :
+                         expense.priority === 'medium' ? 'Média' : 'Baixa'}
+                      </span>
+                    )}
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-sm text-gray-600">Categoria: {expense.category}</p>
+                    <p className="text-lg font-semibold">
+                      {currencyFormat(expense.amount)}
+                    </p>
+                    <p className="text-sm text-gray-500">
+                      Data: {new Date(expense.date).toLocaleDateString('pt-BR')}
+                    </p>
+                    <p className="text-sm text-gray-500">
+                      Propriedade ID: {expense.property_id}
+                    </p>
+                    {expense.vendor && (
+                      <p className="text-sm text-gray-600">Fornecedor: {expense.vendor}</p>
+                    )}
+                    {expense.number && (
+                      <p className="text-sm text-gray-600">Contato: {expense.number}</p>
+                    )}
+                  </div>
+                </div>
+              </Card>
+            ))}
+          </div>
         )}
       </div>
 

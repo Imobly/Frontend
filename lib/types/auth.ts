@@ -7,14 +7,14 @@ export interface User {
 }
 
 export interface LoginRequest {
-  username: string; // Email ou username
+  username: string; // Can be email or username
   password: string;
 }
 
 export interface RegisterRequest {
   name: string;
-  email: string;
   username: string;
+  email: string;
   password: string;
 }
 

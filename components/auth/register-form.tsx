@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { Eye, EyeOff } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
@@ -15,6 +16,7 @@ interface RegisterFormProps {
 export function RegisterForm({ onToggleMode }: RegisterFormProps) {
   const [formData, setFormData] = useState({
     name: '',
+    username: '',
     email: '',
     username: '',
     password: '',
@@ -22,6 +24,8 @@ export function RegisterForm({ onToggleMode }: RegisterFormProps) {
   });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const { register } = useAuth();
   const router = useRouter();
@@ -38,6 +42,12 @@ export function RegisterForm({ onToggleMode }: RegisterFormProps) {
     setError('');
 
     // Validação local
+    if (!/^[a-z0-9_]+$/.test(formData.username)) {
+      setError('Username deve conter apenas letras minúsculas, números e underscore');
+      setIsLoading(false);
+      return;
+    }
+
     if (formData.password !== formData.confirmPassword) {
       setError('As senhas não coincidem');
       setIsLoading(false);
@@ -53,6 +63,7 @@ export function RegisterForm({ onToggleMode }: RegisterFormProps) {
     try {
       await register({
         name: formData.name,
+        username: formData.username,
         email: formData.email,
         username: formData.username,
         password: formData.password,
@@ -94,6 +105,23 @@ export function RegisterForm({ onToggleMode }: RegisterFormProps) {
           </div>
 
           <div className="space-y-2">
+            <Label htmlFor="username">Nome de Usuário</Label>
+            <Input
+              id="username"
+              name="username"
+              type="text"
+              placeholder="usuario_123"
+              value={formData.username}
+              onChange={handleInputChange}
+              required
+              disabled={isLoading}
+              pattern="[a-z0-9_]+"
+              title="Apenas letras minúsculas, números e underscore"
+            />
+            <p className="text-xs text-gray-500">Apenas letras minúsculas, números e underscore (_)</p>
+          </div>
+
+          <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
             <Input
               id="email"
@@ -124,32 +152,54 @@ export function RegisterForm({ onToggleMode }: RegisterFormProps) {
           
           <div className="space-y-2">
             <Label htmlFor="password">Senha</Label>
-            <Input
-              id="password"
-              name="password"
-              type="password"
-              placeholder="Mínimo 6 caracteres"
-              value={formData.password}
-              onChange={handleInputChange}
-              required
-              disabled={isLoading}
-              minLength={6}
-            />
+            <div className="relative">
+              <Input
+                id="password"
+                name="password"
+                type={showPassword ? "text" : "password"}
+                placeholder="Mínimo 6 caracteres"
+                value={formData.password}
+                onChange={handleInputChange}
+                required
+                disabled={isLoading}
+                minLength={6}
+                className="pr-10"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                tabIndex={-1}
+              >
+                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+              </button>
+            </div>
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="confirmPassword">Confirmar Senha</Label>
-            <Input
-              id="confirmPassword"
-              name="confirmPassword"
-              type="password"
-              placeholder="Digite a senha novamente"
-              value={formData.confirmPassword}
-              onChange={handleInputChange}
-              required
-              disabled={isLoading}
-              minLength={6}
-            />
+            <div className="relative">
+              <Input
+                id="confirmPassword"
+                name="confirmPassword"
+                type={showConfirmPassword ? "text" : "password"}
+                placeholder="Digite a senha novamente"
+                value={formData.confirmPassword}
+                onChange={handleInputChange}
+                required
+                disabled={isLoading}
+                minLength={6}
+                className="pr-10"
+              />
+              <button
+                type="button"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                tabIndex={-1}
+              >
+                {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+              </button>
+            </div>
           </div>
 
           {error && (

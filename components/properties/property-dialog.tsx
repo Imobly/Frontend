@@ -72,7 +72,6 @@ export function PropertyDialog({ open, onOpenChange, property, onSave }: Propert
   const [uploadingImages, setUploadingImages] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
   const [dragActive, setDragActive] = useState(false)
-  const [pendingImages, setPendingImages] = useState<File[]>([])
   const { tenants } = useTenants()
 
   useEffect(() => {
@@ -99,6 +98,11 @@ export function PropertyDialog({ open, onOpenChange, property, onSave }: Propert
   }
 
   const handleImageUpload = async (files: FileList | File[]) => {
+    if (!property?.id) {
+      toast.error("Salve o imóvel antes de adicionar imagens")
+      return
+    }
+
     const fileArray = Array.from(files)
     if (fileArray.length === 0) return
 
@@ -120,15 +124,6 @@ export function PropertyDialog({ open, onOpenChange, property, onSave }: Propert
       return
     }
 
-    // Se ainda não existe ID da propriedade, apenas armazenar localmente
-    if (!property?.id) {
-      setPendingImages(prev => [...prev, ...fileArray])
-      const objectUrls = fileArray.map(f => URL.createObjectURL(f))
-      setFormData(prev => ({ ...prev, images: [...prev.images, ...objectUrls] }))
-      toast.info("As imagens serão enviadas após salvar o imóvel")
-      return
-    }
-
     setUploadingImages(true)
     setUploadProgress(0)
 
@@ -139,10 +134,13 @@ export function PropertyDialog({ open, onOpenChange, property, onSave }: Propert
         (progress) => setUploadProgress(progress)
       )
 
-      const newImages = result.uploaded_files.map(f => f.url)
+      // Recarregar propriedade atualizada do backend
+      const updatedProperty = await propertiesService.getProperty(property.id)
+      
+      // Atualizar formData com todas as imagens do backend
       setFormData(prev => ({
         ...prev,
-        images: [...prev.images, ...newImages]
+        images: updatedProperty.images || []
       }))
 
       toast.success(`${result.uploaded_files.length} imagem(ns) enviada(s) com sucesso!`)
@@ -157,8 +155,8 @@ export function PropertyDialog({ open, onOpenChange, property, onSave }: Propert
 
   const handleRemoveImage = async (imageUrl: string, index: number) => {
     if (!property?.id) {
+      // Se não tem ID, apenas remove localmente
       setFormData((prev) => ({ ...prev, images: prev.images.filter((_, i) => i !== index) }))
-      setPendingImages((prev) => prev.filter((_, i) => i !== index))
       return
     }
 
@@ -215,7 +213,7 @@ export function PropertyDialog({ open, onOpenChange, property, onSave }: Propert
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{property ? "Editar Imóvel" : "Novo Imóvel"}</DialogTitle>
           <DialogDescription>
@@ -342,15 +340,7 @@ export function PropertyDialog({ open, onOpenChange, property, onSave }: Propert
                   <Label htmlFor="tenant_id">Inquilino (opcional)</Label>
                   <Select
                     value={formData.tenant_id ? String(formData.tenant_id) : undefined}
-                    onValueChange={(value) => {
-                      const tenantVal = value === "none" ? null : parseInt(value)
-                      handleInputChange("tenant_id", tenantVal)
-                      if (tenantVal) {
-                        handleInputChange("status", "occupied")
-                      } else {
-                        handleInputChange("status", "vacant")
-                      }
-                    }}
+                    onValueChange={(value) => handleInputChange("tenant_id", value === "none" ? null : parseInt(value))}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione um inquilino" />
@@ -549,84 +539,93 @@ export function PropertyDialog({ open, onOpenChange, property, onSave }: Propert
                   <CardDescription>
                     {property?.id 
                       ? "Adicione fotos para destacar seu imóvel" 
-                      : "Você pode adicionar fotos agora; elas serão enviadas após salvar"}
+                      : "Salve o imóvel primeiro para adicionar fotos"}
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <>
-                    {/* Área de Upload */}
-                    <div
-                      onDragEnter={handleDrag}
-                      onDragLeave={handleDrag}
-                      onDragOver={handleDrag}
-                      onDrop={handleDrop}
-                      className={`relative border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
-                        dragActive ? 'border-primary bg-primary/5' : 'border-gray-300'
-                      }`}
-                    >
-                      <input
-                        type="file"
-                        id="property-images"
-                        multiple
-                        accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
-                        onChange={handleFileSelect}
-                        className="hidden"
-                        disabled={uploadingImages}
-                      />
-                      <label
-                        htmlFor="property-images"
-                        className="cursor-pointer flex flex-col items-center"
-                      >
-                        {uploadingImages ? (
-                          <>
-                            <Loader2 className="h-8 w-8 text-primary mb-2 animate-spin" />
-                            <p className="text-sm text-gray-600 mb-1">Enviando imagens...</p>
-                            <div className="w-full max-w-xs bg-gray-200 rounded-full h-2 mt-2">
-                              <div
-                                className="bg-primary h-2 rounded-full transition-all"
-                                style={{ width: `${uploadProgress}%` }}
-                              />
-                            </div>
-                            <p className="text-xs text-gray-500 mt-1">{uploadProgress}%</p>
-                          </>
-                        ) : (
-                          <>
-                            <Upload className="h-8 w-8 text-gray-400 mb-2" />
-                            <p className="text-sm text-gray-600 mb-1">
-                              Arraste imagens aqui ou clique para selecionar
-                            </p>
-                            <p className="text-xs text-gray-500">
-                              JPG, PNG, GIF, WEBP (máx. 10MB cada, até 10 imagens)
-                            </p>
-                          </>
-                        )}
-                      </label>
-                    </div>
-
-                    {/* Grid de Imagens */}
-                    {formData.images.length > 0 && (
-                      <div className="grid gap-4 md:grid-cols-3 mt-4">
-                        {formData.images.map((image, index) => (
-                          <div key={index} className="relative group">
-                            <img
-                              src={image || "/placeholder.svg"}
-                              alt={`Foto ${index + 1}`}
-                              className="w-full h-32 object-cover rounded-lg"
-                            />
-                            <Button
-                              type="button"
-                              variant="destructive"
-                              size="sm"
-                              className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
-                              onClick={() => handleRemoveImage(image, index)}
-                            >
-                              <X className="h-3 w-3" />
-                            </Button>
-                          </div>
-                        ))}
+                  {!property?.id ? (
+                    <div className="flex justify-center p-8 bg-gray-50 rounded-lg border-2 border-dashed">
+                      <div className="text-center">
+                        <Upload className="mx-auto h-8 w-8 text-gray-400 mb-2" />
+                        <p className="text-sm text-gray-500">Salve o imóvel primeiro para adicionar fotos</p>
                       </div>
-                    )}
-                  </>
+                    </div>
+                  ) : (
+                    <>
+                      {/* Área de Upload */}
+                      <div
+                        onDragEnter={handleDrag}
+                        onDragLeave={handleDrag}
+                        onDragOver={handleDrag}
+                        onDrop={handleDrop}
+                        className={`relative border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
+                          dragActive ? 'border-primary bg-primary/5' : 'border-gray-300'
+                        }`}
+                      >
+                        <input
+                          type="file"
+                          id="property-images"
+                          multiple
+                          accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+                          onChange={handleFileSelect}
+                          className="hidden"
+                          disabled={uploadingImages}
+                        />
+                        <label
+                          htmlFor="property-images"
+                          className="cursor-pointer flex flex-col items-center"
+                        >
+                          {uploadingImages ? (
+                            <>
+                              <Loader2 className="h-8 w-8 text-primary mb-2 animate-spin" />
+                              <p className="text-sm text-gray-600 mb-1">Enviando imagens...</p>
+                              <div className="w-full max-w-xs bg-gray-200 rounded-full h-2 mt-2">
+                                <div
+                                  className="bg-primary h-2 rounded-full transition-all"
+                                  style={{ width: `${uploadProgress}%` }}
+                                />
+                              </div>
+                              <p className="text-xs text-gray-500 mt-1">{uploadProgress}%</p>
+                            </>
+                          ) : (
+                            <>
+                              <Upload className="h-8 w-8 text-gray-400 mb-2" />
+                              <p className="text-sm text-gray-600 mb-1">
+                                Arraste imagens aqui ou clique para selecionar
+                              </p>
+                              <p className="text-xs text-gray-500">
+                                JPG, PNG, GIF, WEBP (máx. 10MB cada, até 10 imagens)
+                              </p>
+                            </>
+                          )}
+                        </label>
+                      </div>
+
+                      {/* Grid de Imagens */}
+                      {formData.images.length > 0 && (
+                        <div className="grid gap-4 md:grid-cols-3 mt-4">
+                          {formData.images.map((image, index) => (
+                            <div key={index} className="relative group">
+                              <img
+                                src={image || "/placeholder.svg"}
+                                alt={`Foto ${index + 1}`}
+                                className="w-full h-32 object-cover rounded-lg"
+                              />
+                              <Button
+                                type="button"
+                                variant="destructive"
+                                size="sm"
+                                className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                                onClick={() => handleRemoveImage(image, index)}
+                              >
+                                <X className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>

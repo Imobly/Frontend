@@ -1,33 +1,40 @@
-# Imobly - Frontend
+# Imobly - Sistema de Gestão Imobiliária
 
-Sistema web de gestão imobiliária desenvolvido com Next.js 14, TypeScript e TailwindCSS.
+Sistema moderno de gestão imobiliária desenvolvido com Next.js 14, TypeScript e TailwindCSS. Gerencie propriedades, inquilinos, pagamentos e despesas de forma integrada e eficiente.
 
-> **Parte da Organização Imobly**: Este repositório é o frontend da aplicação. Outros componentes do sistema:
-> - **[Backend](https://github.com/Imobly/backend)**: API REST principal (FastAPI)
-> - **[Auth API](https://github.com/Imobly/auth-api)**: Serviço de autenticação
-> - **[Documentação](https://github.com/Imobly/docs)**: Documentação completa do sistema
+## 🌐 Aplicação em Produção
+
+- **Frontend**: https://imobly.onrender.com
+- **Backend API**: https://backend-non0.onrender.com
+- **Auth API**: https://auth-api-3zxk.onrender.com
+- **Documentação**: https://imobly.github.io/Documentation/
 
 ## 🚀 Tecnologias
 
 - **Framework**: Next.js 14 (App Router)
 - **Linguagem**: TypeScript 5
-- **Estilização**: TailwindCSS + Radix UI
+- **Estilização**: TailwindCSS, Radix UI, shadcn/ui
+- **Ícones**: Lucide React
 - **HTTP Client**: Axios
 - **Formulários**: React Hook Form + Zod
 - **Gráficos**: Recharts
 
-## 📋 Pré-requisitos
+## 🔧 Rodar Localmente
 
+### Pré-requisitos
+
+- Node.js 18+
+- pnpm (recomendado) ou npm
+
+### Instalação
 Para rodar este projeto localmente, você precisa:
 
-- **Node.js** 18 ou superior
-- **pnpm** (gerenciador de pacotes)
-- **Backend** rodando em `localhost:8000` ([ver repositório](https://github.com/Imobly/backend))
-- **Auth API** rodando em `localhost:8001` ([ver repositório](https://github.com/Imobly/auth-api))
+- Node.js 18+
+- pnpm (recomendado) ou npm
+- Backend rodando em `localhost:8000` (FastAPI)
+- Auth API rodando em `localhost:8001`
 
-## 🚀 Como Rodar Localmente
-
-### 1. Clone o repositório
+### Instalação
 
 ```bash
 git clone https://github.com/Imobly/Frontend.git
@@ -48,17 +55,25 @@ Copie o arquivo de exemplo e configure:
 cp .env.example .env.local
 ```
 
-O arquivo `.env.local` deve conter (apenas variáveis públicas, sem segredos):
+O arquivo `.env.local` deve conter (apenas variáveis públicas, sem segredos). Use APIs locais por padrão; se preferir dados reais, substitua por URLs de produção:
 
 ```env
+# APIs locais (recomendado em DEV)
 NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
 NEXT_PUBLIC_AUTH_API_URL=http://localhost:8001/api/v1/auth
 NEXT_PUBLIC_APP_URL=http://localhost:3000
-NEXT_PUBLIC_APP_NAME=Imobly
-NEXT_PUBLIC_APP_VERSION=1.0.0
+
+# Opcional: Supabase público
 NEXT_PUBLIC_SUPABASE_URL=https://<project>.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=public-anon-key
+
+NEXT_PUBLIC_APP_NAME=Imobly
+NEXT_PUBLIC_APP_VERSION=1.0.0
 NODE_ENV=development
+
+# Alternativa: usar APIs de produção para desenvolvimento com dados reais
+# NEXT_PUBLIC_API_URL=https://backend-non0.onrender.com/api/v1
+# NEXT_PUBLIC_AUTH_API_URL=https://auth-api-3zxk.onrender.com/api/v1/auth
 ```
 
 ### 4. Inicie os serviços backend
@@ -83,12 +98,14 @@ pnpm dev
 
 O frontend estará disponível em: **http://localhost:3000**
 
-### 6. Credenciais de teste
+## 📋 Scripts Disponíveis
 
-Após criar um usuário via `/register`, você pode fazer login com:
-- **Username ou Email**: seu_usuario
-- **Senha**: sua_senha
-
+```bash
+pnpm dev          # Servidor de desenvolvimento (porta 3000)
+pnpm build        # Build de produção
+pnpm start        # Servidor de produção (após build)
+pnpm lint         # Executar ESLint
+```
 ## 🏗️ Estrutura do Projeto
 
 ```
@@ -101,92 +118,27 @@ Frontend/
 │   ├── payments/          # Gestão de pagamentos
 │   └── expenses/          # Gestão de despesas
 ├── components/            # Componentes React
-│   ├── auth/             # Componentes de autenticação
 │   ├── ui/               # Componentes UI (shadcn/ui)
 │   └── [feature]/        # Componentes por funcionalidade
 ├── lib/
 │   ├── api/              # Serviços da API
-│   ├── hooks/            # Custom React Hooks
 │   └── types/            # TypeScript types
 └── public/               # Arquivos estáticos
 ```
 
-## 📡 Integração com Backend
-
-O frontend se comunica com dois serviços:
-
-- **Backend API** (`localhost:8000`): Operações CRUD (propriedades, inquilinos, pagamentos, etc)
-- **Auth API** (`localhost:8001`): Autenticação e gerenciamento de usuários
-
-### Custom Hooks Disponíveis
-
-```typescript
-import { useProperties } from '@/lib/hooks/useProperties'
-import { useTenants } from '@/lib/hooks/useTenants'
-import { usePayments } from '@/lib/hooks/usePayments'
-import { useDashboard } from '@/lib/hooks/useDashboard'
-```
-
-## 🔐 Autenticação
-
-- Sistema de autenticação JWT
-- Token armazenado no `localStorage`
-- `AuthProvider` gerencia estado global do usuário
-- Rotas protegidas via `ProtectedRoute`
-
-## 📝 Scripts Disponíveis
-
-```bash
-pnpm dev          # Servidor de desenvolvimento
-pnpm build        # Build de produção
-pnpm start        # Servidor de produção
-pnpm lint         # Executar linter
-```
-
-## 🌐 Deploy em Produção
-
-**Produção ativa**:
-- Frontend: https://imobly.onrender.com
-- Backend: https://backend-non0.onrender.com
-- Auth API: https://auth-api-3zxk.onrender.com
-
-Consulte a documentação para ambientes e deploy:
+## 🌐 Deploy e Ambientes
 
 - Ambientes (DEV, HML, PROD): https://imobly.github.io/Documentation/guides/environments/
 - Deploy: https://github.com/Imobly/docs
 
 ## 🐛 Troubleshooting
 
-### Erro "Failed to fetch" no login
-✅ Verifique se o backend está rodando em `localhost:8000`  
-✅ Verifique se a auth API está rodando em `localhost:8001`  
-✅ Confirme as URLs no arquivo `.env.local`
-
-### Porta 3000 já está em uso
-```bash
-# Windows
-netstat -ano | findstr :3000
-# Kill o processo se necessário
-```
-
-## 📚 Documentação
-
-- **[API Reference](./docs/API_REFERENCE_FRONTEND.md)**: Referência completa da API
-- **[Payment Integration](./docs/FRONTEND_PAYMENT_INTEGRATION.md)**: Integração de pagamentos
-- **[Documentação Geral](https://github.com/Imobly/docs)**: Documentação completa do sistema
-
-## 🤝 Contribuindo
-
-1. Faça um fork do projeto
-2. Crie uma branch para sua feature (`git checkout -b feature/MinhaFeature`)
-3. Commit suas mudanças (`git commit -m 'Add: MinhaFeature'`)
-4. Push para a branch (`git push origin feature/MinhaFeature`)
-5. Abra um Pull Request
-
+- Erro "Failed to fetch" no login: garanta Backend em `localhost:8000` e Auth API em `localhost:8001`; confirme URLs em `.env.local`.
+- Porta 3000 em uso (Windows): `netstat -ano | findstr :3000` e finalize o processo se necessário.
 ## 📄 Licença
 
 Este projeto é propriedade da **Imobly**.
 
 ---
-
 **Desenvolvido pela equipe Imobly** • [Organização GitHub](https://github.com/Imobly)
+Para documentação completa, acesse: https://imobly.github.io/Documentation/

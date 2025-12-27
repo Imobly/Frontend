@@ -1,80 +1,78 @@
-# ============================================
-# Base Stage - Dependencies
-# ============================================
+# ==========================================
+# Dockerfile - Imobly Frontend (Next.js 14)
+# Optimized for Render deployment
+# ==========================================
+
+# Use Node.js 18 Alpine (smaller image)
 FROM node:18-alpine AS base
+
+# ==========================================
+# Stage 1: Dependencies
+# ==========================================
+FROM base AS deps
 WORKDIR /app
 
-# Install pnpm
-RUN npm install -g pnpm@latest
+# Install dependencies
+COPY package.json pnpm-lock.yaml ./
+RUN npm install -g pnpm@latest && \
+    pnpm install --frozen-lockfile
 
-# Copy package files
-COPY package*.json pnpm-lock.yaml ./
+# ==========================================
+# Stage 2: Builder
+# ==========================================
+FROM base AS builder
+WORKDIR /app
 
-# ============================================
-# Development Stage
-# ============================================
-FROM base AS development
-
-# Install all dependencies (including dev)
-RUN pnpm install
-
-# Copy source code
+# Copy dependencies from previous stage
+COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Expose port
-EXPOSE 3000
-
-# Start development server
-CMD ["pnpm", "dev"]
-
-# ============================================
-# Production Builder Stage
-# ============================================
-FROM base AS builder
-
-# Build arguments for Next.js environment variables
+# Build arguments (can be overridden at build time)
 ARG NEXT_PUBLIC_API_URL
-ARG NEXT_PUBLIC_AUTH_API_URL
 ARG NEXT_PUBLIC_APP_URL
-ARG NEXT_PUBLIC_APP_NAME
-ARG NEXT_PUBLIC_APP_VERSION
+ARG NEXT_PUBLIC_APP_NAME=Imobly
+ARG NEXT_PUBLIC_APP_VERSION=1.0.0
 
-# Set environment
+# Set environment variables for build
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
-ENV NEXT_PUBLIC_AUTH_API_URL=${NEXT_PUBLIC_AUTH_API_URL}
 ENV NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL}
 ENV NEXT_PUBLIC_APP_NAME=${NEXT_PUBLIC_APP_NAME}
 ENV NEXT_PUBLIC_APP_VERSION=${NEXT_PUBLIC_APP_VERSION}
 
-# Install ALL dependencies (build needs devDependencies)
-RUN pnpm install --frozen-lockfile
+# Build application (creates .next folder)
+RUN npm install -g pnpm@latest && pnpm build
 
-# Copy source code
-COPY . .
-
-# Build application
-RUN pnpm build
-
-# ============================================
-# Production Stage
-# ============================================
-FROM node:18-alpine AS production
-
+# ==========================================
+# Stage 3: Runner (Production)
+# ==========================================
+FROM base AS runner
 WORKDIR /app
 
-# Set environment
-ENV NODE_ENV=production
-ENV NEXT_TELEMETRY_DISABLED=1
+# Create non-root user for security
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 nextjs
 
-# Copy built application
-COPY --from=builder /app/.next/standalone ./
-COPY --from=builder /app/.next/static ./.next/static
+# Copy necessary files from builder
 COPY --from=builder /app/public ./public
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
-# Expose port
+# Switch to non-root user
+USER nextjs
+
+# Expose port (Render will assign PORT env var)
 EXPOSE 3000
 
-# Start application
+# Set production environment
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV PORT=3000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=40s \
+  CMD node -e "require('http').get('http://localhost:3000', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
+
+# Start the standalone Next.js server
 CMD ["node", "server.js"]

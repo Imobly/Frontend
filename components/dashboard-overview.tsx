@@ -10,14 +10,27 @@ import { OverviewChart } from "@/components/overview-chart"
 import { RecentPayments } from "@/components/recent-payments"
 import { PropertyStatusGrid } from "@/components/property-status-grid"
 import { useDashboard } from "@/lib/hooks/useDashboard"
+import { usePayments } from "@/lib/hooks/usePayments"
+import { useExpenses } from "@/lib/hooks/useExpenses"
 import { EmptyState } from "@/components/ui/empty-state"
+import { currencyFormat } from "@/lib/utils"
 
 export function DashboardOverview() {
   const [selectedPeriod, setSelectedPeriod] = useState("6months")
   const { summary, stats, loading, error, refetch } = useDashboard(selectedPeriod)
+  const { payments, loading: paymentsLoading, error: paymentsError } = usePayments({})
+  const { expenses, loading: expensesLoading, error: expensesError } = useExpenses({})
+  
+  // Calcular totais reais - apenas pagamentos com status 'paid'
+  const totalReceitas = payments
+    .filter(p => p.status === 'paid')
+    .reduce((sum, payment) => sum + (payment.total_amount || 0), 0)
+  const totalDespesas = expenses.reduce((sum, expense) => sum + (expense.amount || 0), 0)
+  const receitaLiquida = totalReceitas - totalDespesas
+  const pagamentosAtrasados = payments.filter(p => p.status === 'overdue').length
 
   // Loading state
-  if (loading) {
+  if (loading || paymentsLoading || expensesLoading) {
     return (
       <div className="flex flex-col items-center justify-center h-96 space-y-4">
         <RefreshCw className="h-8 w-8 animate-spin text-blue-600" />
@@ -106,7 +119,7 @@ export function DashboardOverview() {
           </CardHeader>
           <CardContent>
             <div className="text-lg font-bold text-green-600">
-              R$ {(summary?.financial.monthly_revenue || 0).toLocaleString("pt-BR")}
+              {currencyFormat(totalReceitas)}
             </div>
             <p className="text-xs text-gray-600">mensal</p>
           </CardContent>
@@ -119,7 +132,7 @@ export function DashboardOverview() {
           </CardHeader>
           <CardContent>
             <div className="text-lg font-bold text-red-600">
-              R$ {(summary?.financial.monthly_expenses || 0).toLocaleString("pt-BR")}
+              {currencyFormat(totalDespesas)}
             </div>
             <p className="text-xs text-gray-600">mensal</p>
           </CardContent>
@@ -132,7 +145,7 @@ export function DashboardOverview() {
           </CardHeader>
           <CardContent>
             <div className="text-lg font-bold text-blue-600">
-              R$ {((summary?.financial.monthly_revenue || 0) - (summary?.financial.monthly_expenses || 0)).toLocaleString("pt-BR")}
+              {currencyFormat(receitaLiquida)}
             </div>
             <p className="text-xs text-gray-600">mensal</p>
           </CardContent>
@@ -144,7 +157,7 @@ export function DashboardOverview() {
             <AlertTriangle className="h-3 w-3 text-gray-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-xl font-bold text-red-600">{summary?.financial.overdue_payments || 0}</div>
+            <div className="text-xl font-bold text-red-600">{pagamentosAtrasados}</div>
             <p className="text-xs text-gray-600">em atraso</p>
           </CardContent>
         </Card>
