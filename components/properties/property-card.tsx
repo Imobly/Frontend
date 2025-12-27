@@ -41,9 +41,7 @@ export function PropertyCard({ property, onEdit, onDelete }: PropertyCardProps) 
     : ["/placeholder.svg"]
 
   const handleDelete = () => {
-    if (confirm(`Tem certeza que deseja excluir o imóvel "${property.name}"?`)) {
-      onDelete(property.id)
-    }
+    onDelete(property.id)
   }
 
   const handlePreviousImage = (e: React.MouseEvent) => {

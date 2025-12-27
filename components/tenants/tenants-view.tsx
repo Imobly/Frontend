@@ -10,6 +10,7 @@ import { TenantDialog } from "@/components/tenants/tenant-dialog"
 import { TenantCard } from "@/components/tenants/tenant-card"
 import { EmptyState } from "@/components/ui/empty-state"
 import { ApiService } from "@/lib/api"
+import { TenantList } from "@/components/tenants/tenant-list"
 
 export function TenantsView() {
   const [searchTerm, setSearchTerm] = useState("")
@@ -266,16 +267,20 @@ export function TenantsView() {
             <p className="text-gray-500">Nenhum inquilino encontrado com os filtros aplicados.</p>
           </div>
         ) : (
-          <div className={viewMode === "grid" ? "grid gap-4 md:grid-cols-2 lg:grid-cols-3" : "space-y-4"}>
-            {filteredTenants.map((tenant) => (
-              <TenantCard
-                key={tenant.id}
-                tenant={tenant as any}
-                onEdit={handleEdit}
-                onDelete={handleDelete}
-              />
-            ))}
-          </div>
+          viewMode === "list" ? (
+            <TenantList tenants={filteredTenants as any} onEdit={handleEdit} onDelete={handleDelete} />
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {filteredTenants.map((tenant) => (
+                <TenantCard
+                  key={tenant.id}
+                  tenant={tenant as any}
+                  onEdit={handleEdit}
+                  onDelete={handleDelete}
+                />
+              ))}
+            </div>
+          )
         )}
       </div>
 

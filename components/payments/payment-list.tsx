@@ -38,6 +38,10 @@ export function PaymentList({ payments, onEdit, onDelete }: PaymentListProps) {
     const diffTime = today.getTime() - due.getTime()
     return Math.ceil(diffTime / (1000 * 60 * 60 * 24))
   }
+  const formatDateBRShort = (dateStr: string) => {
+    const d = new Date(dateStr)
+    return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "2-digit" })
+  }
 
   const getProperty = (payment: Payment) => {
     if (payment.property) return payment.property
@@ -94,7 +98,7 @@ export function PaymentList({ payments, onEdit, onDelete }: PaymentListProps) {
                   <div className="text-sm">{payment.description}</div>
                 </TableCell>
                 <TableCell>
-                  <div className="text-sm">{new Date(payment.dueDate).toLocaleDateString("pt-BR")}</div>
+                  <div className="text-sm">{formatDateBRShort(payment.dueDate)}</div>
                   {payment.status === "overdue" && (
                     <div className="text-xs text-red-600 flex items-center mt-1">
                       <AlertTriangle className="h-3 w-3 mr-1" />
@@ -104,7 +108,7 @@ export function PaymentList({ payments, onEdit, onDelete }: PaymentListProps) {
                 </TableCell>
                 <TableCell>
                   {payment.paymentDate ? (
-                    <div className="text-sm">{new Date(payment.paymentDate).toLocaleDateString("pt-BR")}</div>
+                    <div className="text-sm">{formatDateBRShort(payment.paymentDate)}</div>
                   ) : (
                     <div className="text-xs text-muted-foreground">Não pago</div>
                   )}

@@ -4,6 +4,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Edit, Trash2, FileText, AlertTriangle } from "lucide-react"
+import { useProperties } from "@/lib/hooks/useProperties"
 
 interface Expense {
   id: string
@@ -12,7 +13,8 @@ interface Expense {
   description: string
   amount: number
   date: string
-  property: string
+  property?: string
+  property_id?: number
   status: "pending" | "paid" | "scheduled"
   priority?: "low" | "medium" | "high" | "urgent"
   vendor?: string
@@ -27,6 +29,13 @@ interface ExpenseListProps {
 }
 
 export function ExpenseList({ expenses, onEdit, onDelete }: ExpenseListProps) {
+  const { properties } = useProperties()
+  const formatCurrency = (amount: number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(amount)
+  const getPropertyInfo = (expense: Expense) => {
+    if (expense.property) return expense.property
+    const found = properties.find(p => p.id === expense.property_id)
+    return found ? `${found.name} — ${found.address}` : expense.property_id ? `Propriedade #${expense.property_id}` : "—"
+  }
   const getStatusColor = (status: string) => {
     switch (status) {
       case "paid":
@@ -131,10 +140,10 @@ export function ExpenseList({ expenses, onEdit, onDelete }: ExpenseListProps) {
                     </div>
                   </td>
                   <td className="p-4 font-semibold">
-                    R$ {expense.amount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                    {formatCurrency(expense.amount)}
                   </td>
                   <td className="p-4">{new Date(expense.date).toLocaleDateString("pt-BR")}</td>
-                  <td className="p-4 text-sm">{expense.property}</td>
+                  <td className="p-4 text-sm">{getPropertyInfo(expense)}</td>
                   <td className="p-4">
                     <Badge className={getStatusColor(expense.status)}>{getStatusText(expense.status)}</Badge>
                   </td>

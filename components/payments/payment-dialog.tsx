@@ -74,6 +74,27 @@ export function PaymentDialog({ open, onOpenChange, payment, onSave }: PaymentDi
   
   const { contracts } = useContracts()
 
+  const toBRShort = (iso: string) => {
+    if (!iso) return ""
+    const d = new Date(iso)
+    const dd = String(d.getDate()).padStart(2, '0')
+    const mm = String(d.getMonth() + 1).padStart(2, '0')
+    const yy = String(d.getFullYear()).slice(-2)
+    return `${dd}/${mm}/${yy}`
+  }
+  const fromBRShortToISO = (br: string) => {
+    if (!br) return ""
+    const m = br.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2}|\d{4})$/)
+    if (!m) return br // keep if user types different; backend may reject but we'll validate
+    const d = parseInt(m[1], 10)
+    const mo = parseInt(m[2], 10)
+    let y = parseInt(m[3], 10)
+    if (y < 100) y = 2000 + y
+    const jsDate = new Date(y, mo - 1, d)
+    if (isNaN(jsDate.getTime())) return ""
+    return jsDate.toISOString().split('T')[0]
+  }
+
   useEffect(() => {
     if (payment) {
       // Se for edição, carregar dados existentes
@@ -384,9 +405,11 @@ export function PaymentDialog({ open, onOpenChange, payment, onSave }: PaymentDi
               <Label htmlFor="due_date">Data de Vencimento *</Label>
               <Input
                 id="due_date"
-                type="date"
-                value={formData.due_date}
-                onChange={(e) => handleInputChange("due_date", e.target.value)}
+                type="text"
+                inputMode="numeric"
+                placeholder="dd/mm/aa"
+                value={toBRShort(formData.due_date)}
+                onChange={(e) => handleInputChange("due_date", fromBRShortToISO(e.target.value))}
                 className={validationErrors.due_date ? "border-red-500" : ""}
                 required
               />
@@ -402,9 +425,11 @@ export function PaymentDialog({ open, onOpenChange, payment, onSave }: PaymentDi
               <Label htmlFor="payment_date">Data de Pagamento *</Label>
               <Input
                 id="payment_date"
-                type="date"
-                value={formData.payment_date}
-                onChange={(e) => handleInputChange("payment_date", e.target.value)}
+                type="text"
+                inputMode="numeric"
+                placeholder="dd/mm/aa"
+                value={toBRShort(formData.payment_date)}
+                onChange={(e) => handleInputChange("payment_date", fromBRShortToISO(e.target.value))}
                 className={validationErrors.payment_date ? "border-red-500" : ""}
                 required
               />
