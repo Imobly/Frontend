@@ -16,6 +16,7 @@ export function RegisterForm({ onToggleMode }: RegisterFormProps) {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
+    username: '',
     password: '',
     confirmPassword: '',
   });
@@ -53,6 +54,7 @@ export function RegisterForm({ onToggleMode }: RegisterFormProps) {
       await register({
         name: formData.name,
         email: formData.email,
+        username: formData.username,
         password: formData.password,
       });
       
@@ -102,6 +104,21 @@ export function RegisterForm({ onToggleMode }: RegisterFormProps) {
               onChange={handleInputChange}
               required
               disabled={isLoading}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="username">Usuário</Label>
+            <Input
+              id="username"
+              name="username"
+              type="text"
+              placeholder="seuusuario"
+              value={formData.username}
+              onChange={handleInputChange}
+              required
+              disabled={isLoading}
+              minLength={3}
             />
           </div>
           

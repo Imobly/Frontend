@@ -48,7 +48,7 @@ Copie o arquivo de exemplo e configure:
 cp .env.example .env.local
 ```
 
-O arquivo `.env.local` deve conter:
+O arquivo `.env.local` deve conter (apenas variáveis públicas, sem segredos):
 
 ```env
 NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
@@ -56,6 +56,8 @@ NEXT_PUBLIC_AUTH_API_URL=http://localhost:8001/api/v1/auth
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 NEXT_PUBLIC_APP_NAME=Imobly
 NEXT_PUBLIC_APP_VERSION=1.0.0
+NEXT_PUBLIC_SUPABASE_URL=https://<project>.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=public-anon-key
 NODE_ENV=development
 ```
 
@@ -148,7 +150,10 @@ pnpm lint         # Executar linter
 - Backend: https://backend-non0.onrender.com
 - Auth API: https://auth-api-3zxk.onrender.com
 
-Consulte a [documentação de deploy](https://github.com/Imobly/docs) para mais detalhes.
+Consulte a documentação para ambientes e deploy:
+
+- Ambientes (DEV, HML, PROD): https://imobly.github.io/Documentation/guides/environments/
+- Deploy: https://github.com/Imobly/docs
 
 ## 🐛 Troubleshooting
 
