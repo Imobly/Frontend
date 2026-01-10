@@ -99,22 +99,35 @@ export const convertApiToProperty = (apiProperty: PropertyResponse): Property =>
   updated_at: apiProperty.updated_at
 })
 
-export const convertPropertyToApi = (property: PropertyFormData): Partial<PropertyResponse> => ({
-  name: property.name,
-  address: property.address,
-  neighborhood: property.neighborhood,
-  city: property.city,
-  state: property.state,
-  zip_code: property.zipCode || property.zip_code,
-  type: property.type,
-  area: property.area,
-  bedrooms: property.bedrooms,
-  bathrooms: property.bathrooms,
-  parking_spaces: property.parkingSpaces || property.parking_spaces || 0,
-  rent: property.rent,
-  status: property.status,
-  description: property.description,
-  images: property.images,
-  is_residential: property.isResidential ?? property.is_residential ?? true,
-  tenant_id: property.tenant_id ?? null
-})
+export const convertPropertyToApi = (property: PropertyFormData): Partial<PropertyResponse> => {
+  // Garantir que valores numéricos estejam no formato correto
+  const area = typeof property.area === 'string' ? parseFloat(property.area) : property.area
+  const bedrooms = typeof property.bedrooms === 'string' ? parseInt(property.bedrooms) : property.bedrooms
+  const bathrooms = typeof property.bathrooms === 'string' ? parseInt(property.bathrooms) : property.bathrooms
+  const parkingSpaces = typeof property.parkingSpaces === 'string' ? parseInt(property.parkingSpaces) : (property.parkingSpaces || property.parking_spaces || 0)
+  const rent = typeof property.rent === 'string' ? parseFloat(property.rent) : property.rent
+  
+  const apiData = {
+    name: property.name,
+    address: property.address,
+    neighborhood: property.neighborhood,
+    city: property.city,
+    state: property.state,
+    zip_code: property.zipCode || property.zip_code,
+    type: property.type,
+    area: area,
+    bedrooms: bedrooms,
+    bathrooms: bathrooms,
+    parking_spaces: parkingSpaces,
+    rent: rent,
+    status: property.status,
+    description: property.description,
+    images: property.images,
+    is_residential: property.isResidential ?? property.is_residential ?? false,
+    tenant_id: property.tenant_id ?? null
+  }
+  
+  console.log('🔄 [convertPropertyToApi] Dados convertidos:', JSON.stringify(apiData, null, 2))
+  
+  return apiData
+}

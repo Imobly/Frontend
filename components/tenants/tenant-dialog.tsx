@@ -106,6 +106,30 @@ export function TenantDialog({ open, onOpenChange, tenant, onSave }: TenantDialo
     }
   }, [open])
 
+  // Preencher automaticamente o valor do aluguel quando uma propriedade for selecionada
+  useEffect(() => {
+    const propertyId = formData.contract?.property_id
+    if (propertyId && properties.length > 0) {
+      const selectedProperty = properties.find(p => p.id === propertyId)
+      if (selectedProperty && selectedProperty.rent) {
+        // Formatar o valor do aluguel no formato brasileiro
+        const rentValue = selectedProperty.rent.toString().replace('.', ',')
+        const formattedRent = currencyMask(rentValue)
+        
+        // Atualizar o valor do aluguel no contrato
+        setFormData(prev => ({
+          ...prev,
+          contract: {
+            ...prev.contract,
+            rent: formattedRent
+          }
+        }))
+        
+        console.log(`💰 Aluguel preenchido automaticamente: R$ ${formattedRent}`)
+      }
+    }
+  }, [formData.contract?.property_id, properties])
+
   const loadProperties = async () => {
     setLoadingProperties(true)
     try {
@@ -202,8 +226,83 @@ export function TenantDialog({ open, onOpenChange, tenant, onSave }: TenantDialo
     }
   }, [tenant])
 
+  const validateForm = (): boolean => {
+    // Validar campos obrigatórios conforme backend TenantBase
+    if (!formData.name || formData.name.trim() === '') {
+      toast.error('Nome do inquilino é obrigatório')
+      return false
+    }
+    if (!formData.email || formData.email.trim() === '') {
+      toast.error('Email é obrigatório')
+      return false
+    }
+    // Validação simples de email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(formData.email)) {
+      toast.error('Email inválido')
+      return false
+    }
+    if (!formData.phone || formData.phone.trim() === '') {
+      toast.error('Telefone é obrigatório')
+      return false
+    }
+    if (!formData.cpf_cnpj || formData.cpf_cnpj.trim() === '') {
+      toast.error('CPF/CNPJ é obrigatório')
+      return false
+    }
+    if (!formData.profession || formData.profession.trim() === '') {
+      toast.error('Profissão é obrigatória')
+      return false
+    }
+    
+    // Validar contrato se algum campo foi preenchido
+    const contract = formData.contract
+    if (contract) {
+      const hasAnyContractField = contract.title || contract.property_id || contract.start_date || contract.end_date || contract.rent || contract.deposit
+      
+      if (hasAnyContractField) {
+        // Se começou a preencher contrato, validar campos obrigatórios
+        if (!contract.title || contract.title.trim() === '') {
+          toast.error('Título do contrato é obrigatório quando há dados de contrato')
+          return false
+        }
+        if (!contract.property_id) {
+          toast.error('Imóvel é obrigatório quando há dados de contrato')
+          return false
+        }
+        if (!contract.start_date) {
+          toast.error('Data de início do contrato é obrigatória')
+          return false
+        }
+        if (!contract.end_date) {
+          toast.error('Data de término do contrato é obrigatória')
+          return false
+        }
+        if (!contract.rent || contract.rent.trim() === '' || parseFloat(contract.rent.replace(/[^\d,]/g, '').replace(',', '.')) <= 0) {
+          toast.error('Valor do aluguel deve ser maior que zero')
+          return false
+        }
+        
+        // Validar datas
+        const startDate = new Date(contract.start_date)
+        const endDate = new Date(contract.end_date)
+        if (endDate <= startDate) {
+          toast.error('Data de término deve ser posterior à data de início')
+          return false
+        }
+      }
+    }
+    
+    return true
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    
+    if (!validateForm()) {
+      return
+    }
+    
     setIsLoading(true)
     
     try {
@@ -401,7 +500,7 @@ export function TenantDialog({ open, onOpenChange, tenant, onSave }: TenantDialo
               <div className="grid gap-4 py-4">
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-2">
-                    <Label htmlFor="name">Nome Completo</Label>
+                    <Label htmlFor="name">Nome Completo *</Label>
                     <Input
                       id="name"
                       value={formData.name}
@@ -412,7 +511,7 @@ export function TenantDialog({ open, onOpenChange, tenant, onSave }: TenantDialo
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="email">Email</Label>
+                    <Label htmlFor="email">Email *</Label>
                     <Input
                       id="email"
                       type="email"
@@ -424,7 +523,7 @@ export function TenantDialog({ open, onOpenChange, tenant, onSave }: TenantDialo
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="phone">Telefone</Label>
+                    <Label htmlFor="phone">Telefone *</Label>
                     <Input
                       id="phone"
                       type="text"
@@ -438,7 +537,7 @@ export function TenantDialog({ open, onOpenChange, tenant, onSave }: TenantDialo
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="cpf_cnpj">CPF/CNPJ</Label>
+                    <Label htmlFor="cpf_cnpj">CPF/CNPJ *</Label>
                     <Input
                       id="cpf_cnpj"
                       type="text"
@@ -462,7 +561,7 @@ export function TenantDialog({ open, onOpenChange, tenant, onSave }: TenantDialo
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="profession">Profissão</Label>
+                    <Label htmlFor="profession">Profissão *</Label>
                     <Input
                       id="profession"
                       value={formData.profession}

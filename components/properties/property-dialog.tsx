@@ -82,8 +82,72 @@ export function PropertyDialog({ open, onOpenChange, property, onSave }: Propert
     }
   }, [property])
 
+  const validateForm = (): boolean => {
+    // Validar campos obrigatórios conforme backend PropertyBase
+    if (!formData.name || formData.name.trim() === '') {
+      toast.error('Nome do imóvel é obrigatório')
+      return false
+    }
+    if (!formData.address || formData.address.trim() === '') {
+      toast.error('Endereço é obrigatório')
+      return false
+    }
+    if (!formData.neighborhood || formData.neighborhood.trim() === '') {
+      toast.error('Bairro é obrigatório')
+      return false
+    }
+    if (!formData.city || formData.city.trim() === '') {
+      toast.error('Cidade é obrigatória')
+      return false
+    }
+    if (!formData.state || formData.state.trim() === '') {
+      toast.error('Estado é obrigatório')
+      return false
+    }
+    if (!formData.zipCode || formData.zipCode.trim() === '') {
+      toast.error('CEP é obrigatório')
+      return false
+    }
+    if (!formData.type) {
+      toast.error('Tipo do imóvel é obrigatório')
+      return false
+    }
+    
+    // Validar valores numéricos
+    const area = typeof formData.area === 'string' ? parseFloat(formData.area) : formData.area
+    if (!area || area <= 0) {
+      toast.error('Área deve ser maior que zero')
+      return false
+    }
+    
+    const bedrooms = typeof formData.bedrooms === 'string' ? parseInt(formData.bedrooms) : formData.bedrooms
+    if (bedrooms === undefined || bedrooms === null || bedrooms < 0) {
+      toast.error('Número de quartos deve ser zero ou maior')
+      return false
+    }
+    
+    const bathrooms = typeof formData.bathrooms === 'string' ? parseInt(formData.bathrooms) : formData.bathrooms
+    if (bathrooms === undefined || bathrooms === null || bathrooms < 0) {
+      toast.error('Número de banheiros deve ser zero ou maior')
+      return false
+    }
+    
+    const rent = typeof formData.rent === 'string' ? parseFloat(formData.rent) : formData.rent
+    if (!rent || rent <= 0) {
+      toast.error('Valor do aluguel deve ser maior que zero')
+      return false
+    }
+    
+    return true
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    
+    if (!validateForm()) {
+      return
+    }
+    
     setIsLoading(true)
 
     try {
@@ -235,7 +299,7 @@ export function PropertyDialog({ open, onOpenChange, property, onSave }: Propert
             <TabsContent value="basic" className="space-y-4">
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="name">Nome do Imóvel</Label>
+                  <Label htmlFor="name">Nome do Imóvel *</Label>
                   <Input
                     id="name"
                     value={formData.name}
@@ -246,7 +310,7 @@ export function PropertyDialog({ open, onOpenChange, property, onSave }: Propert
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="type">Tipo</Label>
+                  <Label htmlFor="type">Tipo *</Label>
                   <Select value={formData.type} onValueChange={(value) => {
                     handleInputChange("type", value)
                     handleInputChange("isResidential", value === "residential")
@@ -264,7 +328,7 @@ export function PropertyDialog({ open, onOpenChange, property, onSave }: Propert
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="address">Endereço</Label>
+                  <Label htmlFor="address">Endereço *</Label>
                   <Input
                     id="address"
                     value={formData.address}
@@ -275,7 +339,7 @@ export function PropertyDialog({ open, onOpenChange, property, onSave }: Propert
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="neighborhood">Bairro</Label>
+                  <Label htmlFor="neighborhood">Bairro *</Label>
                   <Input
                     id="neighborhood"
                     value={formData.neighborhood}
@@ -286,7 +350,7 @@ export function PropertyDialog({ open, onOpenChange, property, onSave }: Propert
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="city">Cidade</Label>
+                  <Label htmlFor="city">Cidade *</Label>
                   <Input
                     id="city"
                     value={formData.city}
@@ -297,7 +361,7 @@ export function PropertyDialog({ open, onOpenChange, property, onSave }: Propert
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="state">Estado</Label>
+                  <Label htmlFor="state">Estado *</Label>
                   <Input
                     id="state"
                     value={formData.state}
@@ -309,7 +373,7 @@ export function PropertyDialog({ open, onOpenChange, property, onSave }: Propert
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="zipCode">CEP</Label>
+                  <Label htmlFor="zipCode">CEP *</Label>
                   <Input
                     id="zipCode"
                     type="text"
@@ -359,7 +423,7 @@ export function PropertyDialog({ open, onOpenChange, property, onSave }: Propert
             <TabsContent value="details" className="space-y-4">
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="area">Área (m²)</Label>
+                  <Label htmlFor="area">Área (m²) *</Label>
                   <Input
                     id="area"
                     type="text"
@@ -375,7 +439,7 @@ export function PropertyDialog({ open, onOpenChange, property, onSave }: Propert
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="rent">Valor do Aluguel</Label>
+                  <Label htmlFor="rent">Valor do Aluguel *</Label>
                   <div className="relative">
                     <span className="absolute left-3 top-2.5 text-gray-500">R$</span>
                     <Input
@@ -395,7 +459,7 @@ export function PropertyDialog({ open, onOpenChange, property, onSave }: Propert
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="bedrooms">Quartos</Label>
+                  <Label htmlFor="bedrooms">Quartos *</Label>
                   <Input
                     id="bedrooms"
                     type="text"
@@ -410,7 +474,7 @@ export function PropertyDialog({ open, onOpenChange, property, onSave }: Propert
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="bathrooms">Banheiros</Label>
+                  <Label htmlFor="bathrooms">Banheiros *</Label>
                   <Input
                     id="bathrooms"
                     type="text"

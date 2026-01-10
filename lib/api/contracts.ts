@@ -22,7 +22,10 @@ export class ContractsService {
 
   // Criar novo contrato
   async createContract(contract: ContractCreate): Promise<ContractResponse> {
-    return apiClient.post<ContractResponse>(`${this.endpoint}/`, contract)
+    console.log('🔍 [ContractsService] Criando contrato com dados:', JSON.stringify(contract, null, 2))
+    const result = await apiClient.post<ContractResponse>(`${this.endpoint}/`, contract)
+    console.log('✅ [ContractsService] Contrato criado com sucesso:', result)
+    return result
   }
 
   // Atualizar contrato

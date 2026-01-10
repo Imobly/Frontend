@@ -27,7 +27,10 @@ export class PropertiesService {
 
   // Criar nova propriedade
   async createProperty(property: PropertyCreate): Promise<PropertyResponse> {
-    return apiClient.post<PropertyResponse>(`${this.endpoint}/`, property)
+    console.log('🔍 [PropertiesService] Criando propriedade com dados:', JSON.stringify(property, null, 2))
+    const result = await apiClient.post<PropertyResponse>(`${this.endpoint}/`, property)
+    console.log('✅ [PropertiesService] Propriedade criada com sucesso:', result)
+    return result
   }
 
   // Atualizar propriedade
